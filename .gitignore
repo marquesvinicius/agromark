@@ -75,7 +75,9 @@ jspm_packages/
 # Uploads temporários
 backend/uploads/*
 !backend/uploads/.gitkeep
-.pdf
+
+# Arquivos PDF (notas fiscais e documentos)
+*.pdf
 
 # IDEs
 .vscode/
