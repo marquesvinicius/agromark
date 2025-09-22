@@ -1,0 +1,303 @@
+/**
+ * Aplicação Principal - AgroMark ESW424
+ * Interface React para processamento de Notas Fiscais
+ * 
+ * Autor: Marques Vinícius Melo Martins
+ * Disciplina: ESW424 - Prática de Engenharia de Software
+ */
+
+import React, { useState, useEffect } from 'react';
+import { Toaster } from 'react-hot-toast';
+import { Zap, FileText, CheckCircle } from 'lucide-react';
+import Header from './components/Header';
+import UploadArea from './components/UploadArea';
+import ResultsDisplay from './components/ResultsDisplay';
+import StatusCard from './components/StatusCard';
+import Footer from './components/Footer';
+import { apiService } from './services/apiService';
+
+function App() {
+  const [uploadState, setUploadState] = useState({
+    isUploading: false,
+    hasResults: false,
+    results: null,
+    error: null
+  });
+  
+  const [apiStatus, setApiStatus] = useState({
+    isOnline: false,
+    geminiConnected: null, // null = não verificado, true = online, false = offline
+    loading: true
+  });
+
+  // Verificar status da API ao carregar
+  useEffect(() => {
+    checkApiStatus();
+  }, []);
+
+  const checkApiStatus = async (forceRefresh = false) => {
+    try {
+      setApiStatus(prev => ({ ...prev, loading: true }));
+      
+      // Sempre verificar API primeiro (sem LLM)
+      const apiStatus = await apiService.checkHealth();
+      
+      let geminiStatus = { success: false, data: { status: 'unknown' } };
+      
+      // Se for refresh manual, testar LLM também
+      if (forceRefresh) {
+        console.log('Testando LLM por solicitação do usuário...');
+        geminiStatus = await apiService.checkLLMReadiness();
+      }
+      
+      setApiStatus({
+        isOnline: apiStatus.success,
+        geminiConnected: forceRefresh ? (geminiStatus.success && geminiStatus.data?.status === 'ok') : null,
+        loading: false
+      });
+      
+      if (forceRefresh) {
+        console.log('Status atualizado pelo usuário:', {
+          api: apiStatus.success ? 'OK' : 'ERROR',
+          llm: geminiStatus.data?.status || 'unknown'
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao verificar status da API:', error);
+      setApiStatus({
+        isOnline: false,
+        geminiConnected: null,
+        loading: false
+      });
+    }
+  };
+
+  const handleFileUpload = async (file) => {
+    try {
+      setUploadState({
+        isUploading: true,
+        hasResults: false,
+        results: null,
+        error: null
+      });
+
+      const results = await apiService.uploadPDF(file);
+      
+      setUploadState({
+        isUploading: false,
+        hasResults: true,
+        results: results.data,
+        error: null
+      });
+
+    } catch (error) {
+      console.error('Erro no upload:', error);
+      setUploadState({
+        isUploading: false,
+        hasResults: false,
+        results: null,
+        error: error.message || 'Erro desconhecido no processamento'
+      });
+    }
+  };
+
+  const handleReset = () => {
+    setUploadState({
+      isUploading: false,
+      hasResults: false,
+      results: null,
+      error: null
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-secondary flex flex-col font-body">
+      {/* Toast Notifications */}
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#333333',
+            color: '#fff',
+            fontFamily: 'Montserrat, system-ui, sans-serif',
+          },
+          success: {
+            duration: 3000,
+            iconTheme: {
+              primary: '#277D47',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            duration: 5000,
+            iconTheme: {
+              primary: '#E76F51',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
+
+      {/* Header */}
+      <Header />
+
+      {/* Status da API */}
+      <StatusCard 
+        isOnline={apiStatus.isOnline}
+        geminiConnected={apiStatus.geminiConnected}
+        loading={apiStatus.loading}
+        onRefresh={checkApiStatus}
+      />
+
+      {/* Conteúdo Principal */}
+      <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl">
+        <div className="space-y-8">
+          
+          {/* Seção de Introdução */}
+          <div className="text-center space-y-4">
+            <h1 className="text-3xl font-bold font-display text-support sm:text-4xl">
+              Processador de Notas Fiscais
+            </h1>
+            <p className="text-lg text-support-600 max-w-2xl mx-auto font-body">
+              Faça upload de um PDF de Nota Fiscal e utilize inteligência artificial 
+              para extrair automaticamente os dados financeiros e administrativos.
+            </p>
+            
+            {/* Badges informativos */}
+            <div className="flex flex-wrap justify-center gap-2 mt-4">
+              <span className="badge-info">
+                <Zap className="w-4 h-4 mr-1" />
+                Powered by Gemini AI
+              </span>
+              <span className="badge-info">
+                <FileText className="w-4 h-4 mr-1" />
+                Suporte a PDF
+              </span>
+              <span className="badge-info">
+                <CheckCircle className="w-4 h-4 mr-1" />
+                Processamento Instantâneo
+              </span>
+            </div>
+          </div>
+
+          {/* Área de Upload ou Resultados */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            {/* Coluna Principal - Upload/Resultados */}
+            <div className="lg:col-span-8">
+              {!uploadState.hasResults ? (
+                <UploadArea
+                  onFileUpload={handleFileUpload}
+                  isUploading={uploadState.isUploading}
+                  error={uploadState.error}
+                  disabled={!apiStatus.isOnline}
+                />
+              ) : (
+                <ResultsDisplay
+                  results={uploadState.results}
+                  onReset={handleReset}
+                />
+              )}
+            </div>
+
+            {/* Coluna Lateral - Informações */}
+            <div className="lg:col-span-4">
+              <div className="space-y-6">
+                
+                {/* Dados Extraídos */}
+                <div className="card">
+                  <h3 className="text-lg font-semibold font-display text-support mb-4 flex items-center">
+                    <FileText className="w-5 h-5 text-primary-600 mr-2" />
+                    Dados Extraídos
+                  </h3>
+                  <div className="space-y-2 text-sm text-support-600 font-body">
+                    <div className="flex items-center">
+                      <span className="w-2 h-2 bg-primary rounded-full mr-2"></span>
+                      Fornecedor (Razão Social, CNPJ)
+                    </div>
+                    <div className="flex items-center">
+                      <span className="w-2 h-2 bg-primary rounded-full mr-2"></span>
+                      Cliente/Faturado (Nome, CPF)
+                    </div>
+                    <div className="flex items-center">
+                      <span className="w-2 h-2 bg-primary rounded-full mr-2"></span>
+                      Número e Data da NF
+                    </div>
+                    <div className="flex items-center">
+                      <span className="w-2 h-2 bg-primary rounded-full mr-2"></span>
+                      Produtos e Serviços
+                    </div>
+                    <div className="flex items-center">
+                      <span className="w-2 h-2 bg-primary rounded-full mr-2"></span>
+                      Valores e Parcelas
+                    </div>
+                    <div className="flex items-center">
+                      <span className="w-2 h-2 bg-primary rounded-full mr-2"></span>
+                      Classificação de Despesa
+                    </div>
+                  </div>
+                </div>
+
+                {/* Categorias de Despesa */}
+                <div className="card">
+                  <h3 className="text-lg font-semibold font-display text-support mb-4 flex items-center">
+                    <CheckCircle className="w-5 h-5 text-primary-600 mr-2" />
+                    Categorias Disponíveis
+                  </h3>
+                  <div className="space-y-1 text-sm font-body">
+                    {[
+                      'Manutenção e Operação',
+                      'Infraestrutura e Utilidades',
+                      'Insumos Agrícolas',
+                      'Recursos Humanos',
+                      'Serviços Operacionais',
+                      'Outros'
+                    ].map((categoria, index) => (
+                      <div key={index} className="text-support-600">
+                        • {categoria}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Recursos da Plataforma */}
+                <div className="card bg-primary-50 border-primary-200">
+                  <h3 className="text-lg font-semibold font-display text-primary-600-900 mb-3 flex items-center">
+                    <Zap className="w-5 h-5 text-primary-600-700 mr-2" />
+                    Recursos Avançados
+                  </h3>
+                  <div className="space-y-2 text-sm text-primary-600-800 font-body">
+                    <div className="flex items-center">
+                      <CheckCircle className="w-4 h-4 text-primary-600-600 mr-2" />
+                      <span>Processamento via IA</span>
+                    </div>
+                    <div className="flex items-center">
+                      <CheckCircle className="w-4 h-4 text-primary-600-600 mr-2" />
+                      <span>Classificação automática</span>
+                    </div>
+                    <div className="flex items-center">
+                      <CheckCircle className="w-4 h-4 text-primary-600-600 mr-2" />
+                      <span>Extração de dados precisa</span>
+                    </div>
+                    <div className="flex items-center">
+                      <CheckCircle className="w-4 h-4 text-primary-600-600 mr-2" />
+                      <span>Interface intuitiva</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </main>
+
+      {/* Footer */}
+      <Footer />
+    </div>
+  );
+}
+
+export default App;

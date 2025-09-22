@@ -1,0 +1,178 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Estilos customizados para AgroMark */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    background-color: #F2F2F2;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', system-ui, sans-serif;
+    color: #333333;
+  }
+
+  /* Variáveis CSS para cores AgroMark */
+  :root {
+    --color-primary: #277D47;
+    --color-primary-hover: #1F6239;
+    --color-secondary: #F2F2F2;
+    --color-accent: #FFD166;
+    --color-support: #333333;
+    --color-soft: #A5C9A1;
+    --color-expense: #E76F51;
+    --color-income: #3A86FF;
+  }
+}
+
+@layer components {
+  /* Botões personalizados seguindo diretrizes AgroMark */
+  .btn-primary {
+    @apply bg-primary-600 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 min-h-44 hover:bg-primary-700;
+  }
+  
+  .btn-secondary {
+    @apply bg-white border-2 border-primary-600 text-primary-600 font-medium py-3 px-6 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 min-h-44 hover:bg-soft hover:border-soft;
+  }
+  
+  .btn-outline {
+    @apply border-2 border-primary-600 text-primary-600 hover:bg-soft hover:border-soft font-medium py-3 px-6 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 min-h-44;
+  }
+
+  /* Cards seguindo diretrizes AgroMark */
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-secondary-300 p-6;
+  }
+  
+  .card-hover {
+    @apply card hover:shadow-md transition-shadow duration-200 hover:bg-secondary-50;
+  }
+
+  /* Cards financeiros */
+  .card-expense {
+    @apply card border-expense-200 bg-expense-50;
+  }
+
+  .card-income {
+    @apply card border-income-200 bg-income-50;
+  }
+
+  /* Inputs */
+  .input-field {
+    @apply w-full px-4 py-3 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200 font-body;
+  }
+
+  /* Área de upload */
+  .upload-area {
+    @apply border-2 border-dashed border-secondary-300 rounded-xl p-8 text-center hover:border-primary-500 hover:bg-primary-50 transition-all duration-200 cursor-pointer;
+  }
+  
+  .upload-area-active {
+    @apply border-primary-500 bg-primary-50;
+  }
+
+  /* Loading spinner */
+  .spinner {
+    @apply animate-spin rounded-full border-4 border-secondary-300;
+    border-top-color: #277D47;
+  }
+  
+  /* Status badges seguindo paleta AgroMark */
+  .badge-success {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary-100 text-primary-800;
+  }
+  
+  .badge-error {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-expense-100 text-expense-800;
+  }
+  
+  .badge-warning {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-accent-100 text-accent-800;
+  }
+  
+  .badge-info {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-income-100 text-income-800;
+  }
+
+  /* Tabelas */
+  .table-header {
+    @apply bg-soft text-support font-semibold;
+  }
+
+  .table-row-even {
+    @apply bg-white;
+  }
+
+  .table-row-odd {
+    @apply bg-secondary-50;
+  }
+}
+
+@layer utilities {
+  /* Animações customizadas */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Scrollbar customizada */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Responsividade para impressão */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

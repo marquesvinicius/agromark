@@ -1,0 +1,18 @@
+{
+  "name": "agromark-esw424",
+  "version": "1.0.0",
+  "description": "Sistema Administrativo-Financeiro - ESW424 Prática de Engenharia de Software",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd backend && npm run dev",
+    "client": "cd frontend && npm start",
+    "build": "cd frontend && npm run build"
+  },
+  "keywords": ["nota-fiscal", "pdf", "gemini", "react", "node"],
+  "author": "Marques Vinícius Melo Martins",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
