@@ -42,7 +42,7 @@ const Header = () => {
           {/* Links */}
           <div className="hidden md:flex items-center space-x-2">
             <a
-              href="https://github.com"
+              href="https://github.com/marquesvinicius/agromark"
               target="_blank"
               rel="noopener noreferrer"
               className="p-2 text-support-400 hover:text-primary-600 transition-colors"
