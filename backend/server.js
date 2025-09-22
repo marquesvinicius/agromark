@@ -25,6 +25,7 @@ app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
     ? [
+        'https://agromark-topaz.vercel.app',
         'https://agromark-esw424.vercel.app',
         'https://agromark-frontend.vercel.app',
         /\.vercel\.app$/  // Qualquer subdomínio .vercel.app

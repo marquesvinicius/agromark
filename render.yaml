@@ -3,15 +3,15 @@ services:
     name: agromark-backend
     env: node
     plan: free
-    buildCommand: cd backend && npm install
-    startCommand: cd backend && npm start
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
       - key: GEMINI_API_KEY
-        sync: false # Configure manualmente no dashboard
+        sync: false # Configure manualmente no dashboard do Render
       - key: MAX_FILE_SIZE
         value: 10485760
       - key: ALLOWED_FILE_TYPES

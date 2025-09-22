@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 
            (process.env.NODE_ENV === 'production' 
-             ? 'https://seu-backend-render.onrender.com/api'
+             ? 'https://agromark-backend.onrender.com/api'
              : 'http://localhost:5000/api'),
   timeout: 60000, // 60 segundos para upload e processamento
   headers: {
