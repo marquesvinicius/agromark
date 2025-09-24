@@ -102,8 +102,8 @@ class GeminiService {
       try {
         const extractedData = JSON.parse(responseText);
         
-        // Validar e enriquecer dados
-        const validatedData = this.validateAndEnrichData(extractedData);
+        // Validar e enriquecer dados, aplicando fallbacks se necessário
+        const validatedData = this.validateAndEnrichData(extractedData, pdfText);
         
         console.log('✅ Dados extraídos e validados com sucesso');
         return validatedData;
@@ -124,70 +124,69 @@ class GeminiService {
    */
   buildExtractionPrompt(pdfText) {
     return `
-Você é um assistente de IA especialista em extrair informações de Notas Fiscais brasileiras (NF-e). Sua tarefa é seguir um processo de duas etapas: 1) Extração Inicial e 2) Validação e Auto-Correção. O objetivo é retornar um objeto JSON VÁLIDO e PRECISO.
+Você é um especialista em análise de documentos fiscais. Analise o texto da Nota Fiscal abaixo e extraia APENAS as informações solicitadas, retornando um JSON válido.
 
-### ETAPA 1: EXTRAÇÃO INICIAL
-
-**Dicas de Extração:**
-- **Fornecedor (Emitente):** A Razão Social e o CNPJ geralmente estão no topo do documento. **Procure ativamente pelo rótulo "CNPJ" próximo ao nome do fornecedor.**
-- **Cliente (Destinatário):** O Nome/Razão Social e o CPF/CNPJ estão na seção "DESTINATÁRIO / REMETENTE". O CPF/CNPJ pode estar na mesma linha que o nome.
-- **Valores Monetários:** Extraia valores como '3.254,07' e retorne-os como um número de ponto flutuante, por exemplo: 3254.07. **NÃO** inclua separadores de milhar no número final.
-- **Datas:** Converta todas as datas para o formato YYYY-MM-DD.
-- **CNPJ/CPF:** Retorne apenas os números, sem pontos, traços ou barras.
-- **Não Encontrado:** Se um campo não for encontrado, use o valor 'null'.
-
-### EXEMPLO DE EXTRAÇÃO ("FEW-SHOT"):
-
-**Texto de Exemplo:**
-"MAGAZINE LUIZA S/A
-ROD BANDEIRANTES S/N, 0
-NATUREZA DA OPERAÇÃO
-INSCRIÇÃO ESTADUAL CNPJ
-VENDA MERCADORIA
-421021117115 47.960.950/0897-85"
-
-**JSON de Saída Esperado para o Exemplo:**
-{
-  "fornecedor": {
-    "razaoSocial": "MAGAZINE LUIZA S/A",
-    "cnpj": "47960950089785"
-  }
-}
-
-Use este exemplo como guia para associar corretamente a Razão Social ao CNPJ.
-
-### ETAPA 2: VALIDAÇÃO E AUTO-CORREÇÃO
-
-Antes de finalizar, revise os dados extraídos com base nas seguintes regras:
-
-**Regra 1: Validação de Campos Obrigatórios**
-- O campo "fornecedor.cnpj" é OBRIGATÓRIO. Se for 'null' após a extração inicial, REVEJA o texto atentamente, especialmente no topo do documento, procurando pelo rótulo "CNPJ".
-- O campo "faturado" DEVE ter ou "cpf" ou "cnpj". Se ambos forem 'null', REVEJA a seção "DESTINATÁRIO" para encontrar pelo menos um deles.
-
-**Regra 2: Validação de Sanidade dos Valores**
-- Compare o "financeiro.valorTotal" com a soma dos "produtos.valorTotal".
-- Avalie o valor do produto. Exemplo: um notebook não custa 3 reais nem 300.000 reais. Se o valor parecer irreal, é provável que a vírgula ou o ponto decimal tenham sido extraídos incorretamente. CORRIJA o valor para que faça sentido (ex: 3254.07 em vez de 325407.00).
-
-### TEXTO DA NOTA FISCAL PARA ANÁLISE:
+TEXTO DA NOTA FISCAL:
 ${pdfText}
 
-### CATEGORIAS DE DESPESA DISPONÍVEIS:
+INSTRUÇÕES OBRIGATÓRIAS:
+1. O CNPJ do Fornecedor (Emitente) é OBRIGATÓRIO. Ele fica SEMPRE no cabeçalho/topo do documento, associado à empresa que EMITIU a nota. NÃO CONFUNDA com o CNPJ do Destinatário/Faturado. O CNPJ do Fornecedor é o que está mais acima no documento. Exemplo: "08.172.731/0001-26". Extraia apenas os números.
+2. O Faturado (comprador/Destinatário) DEVE ter um CPF (11 dígitos) OU um CNPJ (14 dígitos). Extraia um dos dois. É um campo obrigatório. Procure na seção de destinatário.
+3. Extraia apenas informações que estão claramente presentes no texto.
+4. Para valores monetários, use apenas números (sem símbolos), com ponto como separador decimal.
+5. Para datas, use formato YYYY-MM-DD.
+6. Para CNPJ/CPF, retorne APENAS os números, sem formatação.
+
+INSTRUÇÕES DETALHADAS PARA EXTRAÇÃO DE PRODUTOS:
+
+A extração de produtos é a tarefa mais difícil. Para cada item na seção 'DADOS DOS PRODUTOS/SERVIÇOS', você deve agir como um detetive. Sua missão é encontrar 3 números específicos em uma linha de texto confusa.
+
+**SEU PROCESSO MENTAL PARA CADA ITEM:**
+
+1.  **'Qual é a linha do crime?'**: Isole a linha de texto completa do produto.
+    *   *Exemplo*: '"60138651 TUBO RED. O25,0X 6,0- 50 NL G. 84329000 020 5949 PC 2 48,86 97,72 28,80 5,47 0,00 19,00 0,00"'
+
+2.  **'Liste todos os suspeitos'**: Liste todos os números decimais e inteiros na linha, ignorando códigos longos como NCM (ex: 84329000) ou CST (ex: 020).
+
+3.  **'Teste as combinações'**: Teste combinações de 3 números da lista até encontrar um trio onde um inteiro pequeno (A) * um decimal (B) = outro decimal (C). Teste sistematicamente para não perder nenhum.
+    *   *Raciocínio para o exemplo*: "Números: 2, 48.86, 97.72, 28.80, 5.47, 19.00, 0.00. Teste 1: 2 * 48.86 = 97.72 (sim!). Ignoro os outros porque não formam um trio similar."
+
+4.  **'Quem fez o quê?'**: Identifique o papel de cada número no trio.
+    *   'quantidade': É o inteiro pequeno (A, ex: '2').
+    *   'valorUnitario': É o multiplicador decimal (B, ex: '48.86').
+    *   'valorTotal': É o resultado (C, ex: '97.72').
+
+**EXEMPLOS REAIS DE EXTRAÇÃO CORRETA:**
+- Linha: "60138665 KIT CABO ACO E FIXACOES 73269090 000 5949 PC 2 376,33 752,66 752,66 143,01 0,00 19,00 0,00"
+  - Trio: 2 * 376.33 = 752.66
+  - Extração: quantidade=2, valorUnitario=376.33, valorTotal=752.66
+- Linha: "60143720 PS 12 X 80 DIN 931 10.9 ZLUZ 73181500 020 5949 PC 2 493,40 986,80 571,31 108,55 0,00 19,00 0,00"
+  - Trio: 2 * 493.40 = 986.80
+  - Extração: quantidade=2, valorUnitario=493.40, valorTotal=986.80
+
+**NÃO SEJA ENGANADO!** A IA às vezes assume que a quantidade é '1' e repete o valor total. ISSO ESTÁ ERRADO. Você **DEVE** encontrar o trio que se multiplica corretamente. Se você não encontrar um trio que funcione, a extração falhou para aquele item, mas você deve tentar para todos os itens.
+
+Aplique este processo mental para CADA item da nota.
+
+INSTRUÇÕES PARA CLASSIFICAÇÃO DE DESPESA:
+- Classifique a despesa baseada no conteúdo dos produtos/serviços.
+
+CATEGORIAS DE DESPESA DISPONÍVEIS:
 ${config.despesaCategorias.map(cat => `- ${cat}`).join('\n')}
 
-### FORMATO JSON DE SAÍDA (OBRIGATÓRIO):
-Após a validação e correção, retorne APENAS o objeto JSON abaixo, sem nenhum texto, comentário ou formatação markdown adicional.
+RETORNE APENAS O JSON NO FORMATO EXATO:
 {
   "fornecedor": {
     "razaoSocial": "string ou null",
     "nomeFantasia": "string ou null", 
-    "cnpj": "string apenas números ou null (após re-verificação)",
+    "cnpj": "string (OBRIGATÓRIO, 14 números)",
     "endereco": "string ou null",
     "telefone": "string ou null"
   },
   "faturado": {
     "nome": "string ou null",
-    "cpf": "string apenas números ou null (após re-verificação)",
-    "cnpj": "string apenas números ou null (após re-verificação)",
+    "cpf": "string (11 números) ou null",
+    "cnpj": "string (14 números) ou null",
     "endereco": "string ou null"
   },
   "notaFiscal": {
@@ -246,7 +245,7 @@ Após a validação e correção, retorne APENAS o objeto JSON abaixo, sem nenhu
   /**
    * Valida e enriquece dados extraídos
    */
-  validateAndEnrichData(data) {
+  validateAndEnrichData(data, pdfText) {
     const valorTotalFinanceiro = this.parseNumber(data.financeiro?.valorTotal);
     let parcelasValidadas = this.validateParcelas(data.financeiro?.parcelas);
 
@@ -300,6 +299,48 @@ Após a validação e correção, retorne APENAS o objeto JSON abaixo, sem nenhu
       }
     };
 
+    // --- FALLBACK COM REGEX PARA CAMPOS OBRIGATÓRIOS ---
+
+    // 1. Forçar CNPJ do Fornecedor
+    if (!validated.fornecedor.cnpj) {
+      console.warn('⚠️ LLM não extraiu CNPJ do fornecedor. Ativando fallback com Regex posicional...');
+      const cnpjsEncontrados = this._findCnpjsInTextWithPosition(pdfText);
+      
+      if (cnpjsEncontrados.length > 0) {
+        // Ordena pela posição no texto (menor índice primeiro) e pega o primeiro.
+        // A suposição é que o CNPJ do fornecedor aparece primeiro no texto do PDF.
+        cnpjsEncontrados.sort((a, b) => a.index - b.index);
+        validated.fornecedor.cnpj = cnpjsEncontrados[0].cnpj;
+        console.log(`✅ Fallback bem-sucedido. CNPJ do fornecedor encontrado pela posição: ${validated.fornecedor.cnpj}`);
+      } else {
+        console.error('❌ Fallback falhou. Nenhum CNPJ encontrado no texto.');
+      }
+    }
+
+    // 2. Forçar CPF ou CNPJ do Faturado
+    if (!validated.faturado.cpf && !validated.faturado.cnpj) {
+      console.warn('⚠️ LLM não extraiu CPF/CNPJ do faturado. Ativando fallback com Regex...');
+      const cpfsEncontrados = this._findCpfsInTextWithPosition(pdfText);
+
+      if (cpfsEncontrados.length > 0) {
+        // Assume o primeiro CPF encontrado é do faturado
+        cpfsEncontrados.sort((a, b) => a.index - b.index);
+        validated.faturado.cpf = cpfsEncontrados[0].cpf;
+        console.log(`✅ Fallback bem-sucedido. CPF do faturado encontrado: ${validated.faturado.cpf}`);
+      } else {
+        const cnpjsEncontrados = this._findCnpjsInTextWithPosition(pdfText);
+        // Pega um CNPJ que seja diferente do CNPJ do fornecedor
+        const cnpjFaturado = cnpjsEncontrados.map(c => c.cnpj).find(cnpj => cnpj !== validated.fornecedor.cnpj);
+        if (cnpjFaturado) {
+          validated.faturado.cnpj = cnpjFaturado;
+          console.log(`✅ Fallback bem-sucedido. CNPJ do faturado encontrado: ${validated.faturado.cnpj}`);
+        } else {
+           console.error('❌ Fallback falhou. Nenhum CPF ou CNPJ de faturado encontrado no texto.');
+        }
+      }
+    }
+
+
     return validated;
   }
 
@@ -316,6 +357,56 @@ Após a validação e correção, retorne APENAS o objeto JSON abaixo, sem nenhu
     if (!cpf) return null;
     const numbers = cpf.replace(/\D/g, '');
     return numbers.length === 11 ? numbers : null;
+  }
+
+  /**
+   * Utilitários de busca com Regex para fallback, retornando valores com suas posições.
+   */
+  _findCnpjsInTextWithPosition(text) {
+    const regex = /\b(?:\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}|\d{14})\b/g;
+    const matches = [];
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      matches.push({
+        raw: match[0],
+        cnpj: match[0].replace(/\D/g, ''),
+        index: match.index
+      });
+    }
+    
+    // Remove duplicados baseados no CNPJ limpo, mantendo a primeira ocorrência
+    const uniqueCnpjs = [];
+    const seen = new Set();
+    for (const m of matches) {
+      if (!seen.has(m.cnpj) && m.cnpj.length === 14) {
+        seen.add(m.cnpj);
+        uniqueCnpjs.push(m);
+      }
+    }
+    return uniqueCnpjs;
+  }
+
+  _findCpfsInTextWithPosition(text) {
+    const regex = /\b(?:\d{3}\.\d{3}\.\d{3}-\d{2}|\d{11})\b/g;
+    const matches = [];
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      matches.push({
+        raw: match[0],
+        cpf: match[0].replace(/\D/g, ''),
+        index: match.index
+      });
+    }
+    
+    const uniqueCpfs = [];
+    const seen = new Set();
+    for (const m of matches) {
+      if (!seen.has(m.cpf) && m.cpf.length === 11) {
+        seen.add(m.cpf);
+        uniqueCpfs.push(m);
+      }
+    }
+    return uniqueCpfs;
   }
 
   validateDate(dateStr) {
