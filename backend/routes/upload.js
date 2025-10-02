@@ -12,6 +12,7 @@ const pdfParse = require('pdf-parse');
 const config = require('../config');
 const geminiService = require('../services/geminiService');
 const { validatePDF, sanitizeFileName } = require('../utils/fileUtils');
+const { isTextScannable } = require('../utils/textUtils');
 
 const router = express.Router();
 
@@ -85,11 +86,12 @@ router.post('/', upload.single('pdf'), async (req, res) => {
     const pdfBuffer = fs.readFileSync(uploadedFilePath);
     const pdfData = await pdfParse(pdfBuffer);
     
-    if (!pdfData.text || pdfData.text.trim().length === 0) {
+    // Validar se o texto extraído é escaneável
+    if (!isTextScannable(pdfData.text)) {
       return res.status(400).json({
         success: false,
-        message: 'PDF não contém texto legível ou está corrompido',
-        error: 'NO_TEXT_FOUND'
+        message: 'PDF não contém texto escaneável ou está corrompido. O arquivo pode ser uma imagem.',
+        error: 'NON_SCANNABLE_TEXT'
       });
     }
 

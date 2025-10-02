@@ -6,6 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const pdfParse = require('pdf-parse');
+const { isTextScannable } = require('./textUtils');
 
 /**
  * Valida se o arquivo é um PDF válido
@@ -54,10 +55,10 @@ async function validatePDF(filePath) {
     try {
       const pdfData = await pdfParse(pdfBuffer);
       
-      if (!pdfData.text || pdfData.text.trim().length < 50) {
+      if (!isTextScannable(pdfData.text)) {
         return {
           valid: false,
-          message: 'PDF não contém texto suficiente para processamento'
+          message: 'PDF não contém texto escaneável suficiente para processamento'
         };
       }
 
