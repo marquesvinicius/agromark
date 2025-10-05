@@ -51,7 +51,7 @@ const Header = () => {
               <Github className="w-5 h-5" />
             </a>
             <a
-              href="/API_DOCUMENTATION.md"
+              href="https://github.com/marquesvinicius/agromark/blob/master/frontend/public/API_DOCUMENTATION.md"
               target="_blank"
               rel="noopener noreferrer"
               className="p-2 text-support-400 hover:text-primary-600 transition-colors"
