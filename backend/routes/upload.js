@@ -10,7 +10,7 @@ const fs = require('fs');
 const pdfParse = require('pdf-parse');
 
 const config = require('../config');
-const geminiService = require('../services/geminiService');
+const agent01 = require('../services/agent01');
 const { validatePDF, sanitizeFileName } = require('../utils/fileUtils');
 const { isTextScannable } = require('../utils/textUtils');
 
@@ -99,7 +99,7 @@ router.post('/', upload.single('pdf'), async (req, res) => {
 
     // Processar com Gemini API
     console.log('🤖 Enviando para Gemini API...');
-    const extractedData = await geminiService.extractInvoiceData(pdfData.text);
+    const extractedData = await agent01.extractInvoiceData(pdfData.text);
 
     // Enriquecer dados com informações do arquivo
     const result = {
@@ -194,7 +194,7 @@ router.get('/test', async (req, res) => {
         uploadDir: config.upload.uploadDir,
         dirExists: fs.existsSync(config.upload.uploadDir)
       },
-      geminiStatus: await geminiService.testConnection(),
+      geminiStatus: await agent01.testConnection(),
       timestamp: new Date().toISOString()
     };
 

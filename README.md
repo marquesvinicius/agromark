@@ -6,56 +6,91 @@
 
 ## 📋 Sobre o Projeto
 
-Sistema para processamento de Notas Fiscais em PDF utilizando IA (Gemini API) para extração automática de dados financeiros e administrativos.
+O AgroMark é um sistema de gestão financeira focado no agronegócio, projetado para simplificar a administração de despesas. Sua funcionalidade principal é o processamento inteligente de Notas Fiscais em PDF, utilizando a API do Google Gemini para extrair e categorizar dados automaticamente, otimizando o fluxo de trabalho financeiro.
 
-### 🎯 Etapa 1 - Processador de PDF de Nota Fiscal
-- ✅ Upload de PDF via interface web
-- ✅ Extração de dados via Gemini API
-- ✅ Visualização formatada e JSON dos dados
-- ✅ Interface React moderna e responsiva
+## 🛠️ Tecnologias Utilizadas
 
-## 🛠️ Tecnologias
+-   **Backend:** Node.js, Express
+-   **Frontend:** React, Tailwind CSS
+-   **Inteligência Artificial:** Google Gemini 2.5 Flash
+-   **Processamento de Arquivos:** Multer (upload), PDF-Parse (extração de texto)
+-   **Execução Concorrente:** `concurrently` para o ambiente de desenvolvimento.
 
-- **Backend:** Node.js + Express
-- **Frontend:** React
-- **IA:** Google Gemini API
-- **Upload:** Multer
-- **PDF:** PDF-Parse
+## ✨ Funcionalidades Principais
 
-## 🚀 Deploy na Vercel
+-   **Upload Inteligente:** Interface web para upload de arquivos PDF de Notas Fiscais.
+-   **Extração Automática:** Utilização da IA do Gemini para extrair dados essenciais:
+    -   **Fornecedor:** Razão social, CNPJ.
+    -   **Faturado:** Nome, CPF/CNPJ.
+    -   **Nota Fiscal:** Número, série, data de emissão.
+    -   **Produtos:** Descrição, quantidade, valores.
+    -   **Financeiro:** Valor total e parcelas.
+-   **Categorização Automática:** A IA classifica a despesa em categorias pré-definidas (ex: MANUTENÇÃO, INSUMOS).
+-   **Visualização Clara:** Exibição dos dados extraídos de forma organizada na interface, com a opção de visualizar o JSON completo.
 
-### **🌐 Deploy em Produção**
-Este projeto está configurado para **deploy separado**:
+## 🚀 Rodando o Projeto Localmente
 
-**Frontend (Vercel):**
+Siga os passos abaixo para configurar e executar o projeto em seu ambiente de desenvolvimento.
+
+### 1. Pré-requisitos
+
+-   [Node.js](https://nodejs.org/) (versão 18 ou superior)
+-   [Git](https://git-scm.com/)
+
+### 2. Instalação
+
 ```bash
-# 1. Subir para GitHub
-git init
-git add .
-git commit -m "feat: Implementação ESW424 Etapa 1"
-git push origin main
+# 1. Clone o repositório
+git clone https://github.com/marquesvinicius/agromark.git
+cd agromark
 
-# 2. Deploy na Vercel
-# Conecte repositório → Configure REACT_APP_API_URL → Deploy
+# 2. Instale as dependências da raiz, do backend e do frontend
+npm install
+npm --prefix backend install
+npm --prefix frontend install
 ```
 
-**Backend (Render):**
+### 3. Configuração do Ambiente
+
+A API do Gemini é essencial para o funcionamento do backend.
+
+1.  Crie um arquivo `.env` dentro da pasta `backend/`:
+    ```
+    backend/.env
+    ```
+2.  Adicione sua chave da API do Gemini ao arquivo:
+    ```env
+    # Chave obtida no Google AI Studio
+    GEMINI_API_KEY="SUA_CHAVE_AQUI"
+
+    # Ambiente de desenvolvimento para habilitar CORS local
+    NODE_ENV="development"
+    ```
+
+### 4. Execução
+
+Execute o seguinte comando a partir da pasta **raiz** do projeto:
+
 ```bash
-# 1. Mesmo repositório GitHub
-# 2. Deploy no Render
-# Configure GEMINI_API_KEY no dashboard → Deploy
+# Inicia o backend (porta 5000) e o frontend (porta 3000) simultaneamente
+npm run dev
 ```
 
-### **⚡ Arquitetura de Deploy**
-- ✅ **Frontend:** React na Vercel (CDN Global)
-- ✅ **Backend:** Node.js no Render (Always-on)
-- ✅ **Variáveis de ambiente** via dashboards
-- ✅ **CORS configurado** para comunicação
+-   **Frontend:** Acesse `http://localhost:3000`
+-   **Backend:** Disponível em `http://localhost:5000`
 
-### **🔗 URLs de Produção**
-- **Interface:** `https://agromark-esw424.vercel.app`
-- **API:** `https://agromark-backend.onrender.com/api`
-- **Docs:** `https://agromark-backend.onrender.com/api/docs`
+## 📊 Endpoints da API
+
+A API é o coração do projeto. Ela lida com a saúde do sistema, processamento de arquivos e extração de dados.
+
+| Método | Endpoint                | Descrição                                                 |
+| :----- | :---------------------- | :-------------------------------------------------------- |
+| `POST` | `/api/upload`           | Envia um PDF para extração de dados.                      |
+| `GET`  | `/api/health`           | Verifica o status básico da API.                          |
+| `GET`  | `/api/readiness-llm`    | Testa a conexão real com a API do Gemini.                 |
+| `GET`  | `/api/upload/categories` | Lista as categorias de despesa disponíveis.               |
+
+Para uma visão completa de todos os endpoints, parâmetros e exemplos de resposta, consulte a **[Documentação Completa da API](frontend/public/API_DOCUMENTATION.md)**.
 
 ## 📁 Estrutura do Projeto
 
@@ -63,42 +98,29 @@ git push origin main
 agromark/
 ├── backend/           # API Node.js + Express
 ├── frontend/          # Interface React
-├── docs/             # Documentação e diagramas
-├── package.json      # Scripts principais
-└── README.md         # Este arquivo
+│   └── public/
+│       └── API_DOCUMENTATION.md  # Documentação da API
+├── docs/              # Documentação e diagramas do projeto
+├── package.json       # Scripts para rodar o projeto
+└── README.md          # Este arquivo
 ```
 
-## 🎯 Funcionalidades da Etapa 1
+## 🌐 Deploy
 
-### Campos Extraídos da Nota Fiscal:
-- **Fornecedor:** Razão social, fantasia, CNPJ
-- **Faturado:** Nome completo, CPF
-- **Nota Fiscal:** Número e data de emissão
-- **Produtos:** Descrição dos itens
-- **Financeiro:** Parcelas, vencimento, valor total
-- **Classificação:** Categoria da despesa (via IA)
+O projeto está configurado para deploy contínuo em plataformas separadas para otimizar a performance.
 
-### Categorias de Despesa:
-- MANUTENÇÃO E OPERAÇÃO
-- INFRAESTRUTURA E UTILIDADES
-- INSUMOS AGRÍCOLAS
-- RECURSOS HUMANOS
-- SERVIÇOS OPERACIONAIS
+-   **Frontend (React):** Vercel, para CDN global e performance.
+-   **Backend (Node.js):** Render, para um serviço always-on.
 
-## 📊 Endpoints da API
+As variáveis de ambiente (`GEMINI_API_KEY` no backend) devem ser configuradas diretamente nos dashboards dos respectivos serviços.
 
-- `POST /api/upload` - Upload e processamento de PDF
-- `GET /api/health` - Status da aplicação
+-   **Interface:** `https://agromark-esw424.vercel.app`
+-   **API:** `https://agromark-backend.onrender.com/api`
 
 ## 🔮 Próximas Etapas (Etapa 2)
 
-- Cadastro de fornecedores e clientes
-- Sistema de contas a pagar/receber
-- Múltiplas parcelas e categorias
-- Banco de dados persistente
-- Relatórios financeiros
-
----
-
-**Entrega Etapa 1:** 24/09/2025 (40% da nota)  
-**Entrega Etapa 2:** 22/10/2025 (60% da nota)
+-   [ ] Cadastro de fornecedores e clientes
+-   [ ] Sistema de contas a pagar/receber
+-   [ ] Persistência de dados em um banco de dados
+-   [ ] Geração de relatórios financeiros
+-   [ ] Autenticação de usuários

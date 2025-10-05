@@ -3,20 +3,41 @@
  * Integração com Google Gemini para extração de dados de Nota Fiscal
  */
 
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@google/generative-ai');
 const config = require('../config');
 
-class GeminiService {
+class Agent01 {
   constructor() {
     this.genAI = new GoogleGenerativeAI(config.geminiApiKey);
+
+    const safetySettings = [
+      {
+        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+      {
+        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+        threshold: HarmBlockThreshold.BLOCK_NONE,
+      },
+    ];
+
     this.model = this.genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       generationConfig: {
         temperature: 0.1,
         topK: 1,
         topP: 0.8,
-        maxOutputTokens: 2048,
-      }
+        maxOutputTokens: 8192,
+      },
+      safetySettings,
     });
     
     // Cache para evitar múltiplas chamadas desnecessárias
@@ -88,13 +109,10 @@ class GeminiService {
   async extractInvoiceData(pdfText) {
     try {
       const prompt = this.buildExtractionPrompt(pdfText);
-      console.log('🤖 Enviando prompt para Gemini...');
-      
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
-      let responseText = response.text();
       
-      console.log('📝 Resposta recebida do Gemini');
+      let responseText = response.text();
       
       // Limpar e parsear JSON
       responseText = this.cleanJsonResponse(responseText);
@@ -105,7 +123,6 @@ class GeminiService {
         // Validar e enriquecer dados, aplicando fallbacks se necessário
         const validatedData = this.validateAndEnrichData(extractedData, pdfText);
         
-        console.log('✅ Dados extraídos e validados com sucesso');
         return validatedData;
         
       } catch (parseError) {
@@ -123,7 +140,7 @@ class GeminiService {
    * Constrói prompt otimizado para extração de dados
    */
   buildExtractionPrompt(pdfText) {
-    return `
+    const prompt = `
 Você é um especialista em análise de documentos fiscais. Analise o texto da Nota Fiscal abaixo e extraia APENAS as informações solicitadas, retornando um JSON válido.
 
 TEXTO DA NOTA FISCAL:
@@ -219,6 +236,7 @@ RETORNE APENAS O JSON NO FORMATO EXATO:
   }
 }
 `;
+    return prompt;
   }
 
   /**
@@ -450,6 +468,6 @@ RETORNE APENAS O JSON NO FORMATO EXATO:
 }
 
 // Instância singleton
-const geminiService = new GeminiService();
+const agent01 = new Agent01();
 
-module.exports = geminiService;
+module.exports = agent01;
