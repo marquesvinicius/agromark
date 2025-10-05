@@ -122,3 +122,4 @@ build/
 # Documentação - Apenas README.md deve ser commitado
 *.md
 !README.md
+!API_DOCUMENTATION.md
