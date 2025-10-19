@@ -39,7 +39,7 @@ const Footer = () => {
               com processamento inteligente de documentos e análise de dados avançada.
             </p>
             <div className="text-xs text-support-500 font-body">
-              Versão 1.0.0 - Processador de Documentos
+              Versão 1.1.0 - Processador de Documentos
             </div>
           </div>
 

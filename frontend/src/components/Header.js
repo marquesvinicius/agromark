@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { Github, ExternalLink, Home, FileText } from 'lucide-react';
 
 const Header = () => {
@@ -44,22 +44,35 @@ const Header = () => {
           <div className="flex items-center space-x-1">
             {/* Menu de Navegação */}
             <nav className="hidden md:flex items-center space-x-1 mr-2">
-              <Link
+              <NavLink
                 to="/"
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-support-600 hover:text-primary-600 hover:bg-secondary-50 rounded-md transition-colors"
+                end
+                className={({ isActive }) =>
+                  `flex items-center space-x-2 px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'text-primary-600'
+                      : 'text-support-600 hover:text-primary-600'
+                  }`
+                }
                 title="Página Inicial"
               >
                 <Home className="w-4 h-4" />
                 <span>Início</span>
-              </Link>
-              <Link
+              </NavLink>
+              <NavLink
                 to="/movimentos"
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-support-600 hover:text-primary-600 hover:bg-secondary-50 rounded-md transition-colors"
+                className={({ isActive }) =>
+                  `flex items-center space-x-2 px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'text-primary-600'
+                      : 'text-support-600 hover:text-primary-600'
+                  }`
+                }
                 title="Ver Movimentos Financeiros"
               >
                 <FileText className="w-4 h-4" />
                 <span>Movimentos</span>
-              </Link>
+              </NavLink>
             </nav>
 
             {/* Links Externos */}
