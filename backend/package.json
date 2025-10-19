@@ -36,5 +36,8 @@
     "api"
   ],
   "author": "Marques Vinícius Melo Martins",
-  "license": "MIT"
+  "license": "MIT",
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  }
 }
