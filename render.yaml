@@ -6,8 +6,7 @@ databases:
   - name: agromark-postgres
     databaseName: agromark
     plan: free # Importante: o plano gratuito pode "dormir" após inatividade
-    postgres:
-      majorVersion: 16
+    postgresMajorVersion: 16
 
 # 2. Definição dos Serviços Web (Frontend e Backend)
 services:
