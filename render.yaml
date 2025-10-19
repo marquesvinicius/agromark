@@ -22,8 +22,7 @@ services:
       - backend/**
     envVars:
       - key: DATABASE_URL
-        fromService:
-          type: postgres # Correção: O tipo correto de serviço para Postgres é 'postgres'
+        fromDatabase:
           name: agromark-postgres
           property: connectionString
       - key: GEMINI_API_KEY
