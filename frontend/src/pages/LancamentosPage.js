@@ -1,5 +1,5 @@
 /**
- * Página de Lançamentos - AgroMark ESW424
+ * Página de Movimentos - AgroMark ESW424
  * Lista todos os movimentos financeiros cadastrados
  */
 
@@ -51,10 +51,10 @@ const LancamentosPage = () => {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold font-display text-support">
-                Histórico de Lançamentos
+                Movimentos Financeiros
               </h1>
               <p className="text-support-600 mt-2">
-                Visualize todos os movimentos financeiros registrados no sistema
+                Visualize todos os movimentos registrados no sistema
               </p>
             </div>
             
@@ -75,7 +75,7 @@ const LancamentosPage = () => {
             <div className="card text-center py-12">
               <Loader2 className="w-12 h-12 text-primary-600 animate-spin mx-auto mb-4" />
               <p className="text-lg text-support-600 font-body">
-                Carregando lançamentos...
+                Carregando movimentos...
               </p>
               <p className="text-sm text-support-500 mt-2">
                 Por favor, aguarde enquanto buscamos os dados
@@ -90,7 +90,7 @@ const LancamentosPage = () => {
                 <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-red-900 mb-1">
-                    Erro ao Carregar Lançamentos
+                    Erro ao Carregar Movimentos
                   </h3>
                   <p className="text-red-700 mb-3">
                     {error}
@@ -106,7 +106,7 @@ const LancamentosPage = () => {
             </div>
           )}
 
-          {/* Tabela de Lançamentos */}
+          {/* Tabela de Movimentos */}
           {!isLoading && !error && (
             <LancamentosTabela movimentos={movimentos} />
           )}

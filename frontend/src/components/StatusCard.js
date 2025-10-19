@@ -6,14 +6,20 @@
 import React from 'react';
 import { CheckCircle, XCircle, AlertCircle, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 
-const StatusCard = ({ isOnline, geminiConnected, loading, onRefresh }) => {
+const StatusCard = ({ isOnline, geminiConnected, loading, onRefresh, cacheInfo }) => {
   
   const handleRefreshClick = async () => {
+    if (cacheInfo?.cached && cacheInfo?.remainingCacheSeconds > 0) {
+      return; // Não permite refresh se ainda está no período de cache
+    }
+    
     console.log('Usuário clicou em refresh - testando Gemini...');
     if (onRefresh) {
       onRefresh(true); // Parâmetro true indica que é refresh manual
     }
   };
+  
+  const isCooldown = cacheInfo?.cached && cacheInfo?.remainingCacheSeconds > 0;
   const getStatusIcon = (status, isLoading) => {
     if (isLoading) {
       return <RefreshCw className="w-4 h-4 animate-spin" />;
@@ -111,9 +117,13 @@ const StatusCard = ({ isOnline, geminiConnected, loading, onRefresh }) => {
             {/* Botão de Refresh */}
             <button
               onClick={handleRefreshClick}
-              disabled={loading}
+              disabled={loading || isCooldown}
               className="p-2 text-support-400 hover:text-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Atualizar status (testa Gemini API)"
+              title={
+                isCooldown 
+                  ? `Aguarde ${Math.ceil(cacheInfo.remainingCacheSeconds / 60)} min para verificar novamente`
+                  : "Atualizar status (testa Gemini API)"
+              }
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -140,9 +150,13 @@ const StatusCard = ({ isOnline, geminiConnected, loading, onRefresh }) => {
             {/* Botão de Refresh */}
             <button
               onClick={handleRefreshClick}
-              disabled={loading}
+              disabled={loading || isCooldown}
               className="p-2 text-support-400 hover:text-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Atualizar status"
+              title={
+                isCooldown 
+                  ? `Aguarde ${Math.ceil(cacheInfo.remainingCacheSeconds / 60)} min`
+                  : "Atualizar status"
+              }
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -173,25 +187,42 @@ const StatusCard = ({ isOnline, geminiConnected, loading, onRefresh }) => {
           </div>
         </div>
 
-        {/* Alertas */}
-        {!loading && (!isOnline || geminiConnected === false) && (
-          <div className="mt-3 pt-3 border-t border-gray-200">
-            <div className="flex items-start space-x-2">
-              <AlertCircle className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-gray-600">
-                {!isOnline && (
-                  <div>
-                    <strong>API Offline:</strong> Verifique se o backend está rodando na porta 5000.
+        {/* Alertas e Mensagens */}
+        {!loading && (
+          <>
+            {/* Mensagem de Cache */}
+            {isCooldown && cacheInfo?.message && (
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <div className="flex items-start space-x-2">
+                  <AlertCircle className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-gray-600">
+                    <strong>Status em Cache:</strong> {cacheInfo.message}
                   </div>
-                )}
-                {isOnline && geminiConnected === false && (
-                  <div>
-                    <strong>Gemini AI Indisponível:</strong> Funcionalidade de extração pode estar limitada.
-                  </div>
-                )}
+                </div>
               </div>
-            </div>
-          </div>
+            )}
+            
+            {/* Alertas de Erro */}
+            {(!isOnline || geminiConnected === false) && (
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <div className="flex items-start space-x-2">
+                  <AlertCircle className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-gray-600">
+                    {!isOnline && (
+                      <div>
+                        <strong>API Offline:</strong> Verifique se o backend está rodando na porta 5000.
+                      </div>
+                    )}
+                    {isOnline && geminiConnected === false && (
+                      <div>
+                        <strong>Gemini AI Indisponível:</strong> Funcionalidade de extração pode estar limitada.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -1,6 +1,6 @@
 /**
  * Componente LancamentosTabela - AgroMark ESW424
- * Tabela de exibição dos lançamentos financeiros
+ * Tabela de exibição dos movimentos financeiros
  */
 
 import React from 'react';
@@ -47,10 +47,10 @@ const LancamentosTabela = ({ movimentos }) => {
       <div className="card text-center py-12">
         <FileText className="w-16 h-16 text-support-300 mx-auto mb-4" />
         <p className="text-lg text-support-600 font-body">
-          Nenhum lançamento encontrado.
+          Nenhum movimento encontrado.
         </p>
         <p className="text-sm text-support-500 mt-2">
-          Os lançamentos financeiros aparecerão aqui após serem criados.
+          Os movimentos financeiros aparecerão aqui após serem criados.
         </p>
       </div>
     );
@@ -125,7 +125,7 @@ const LancamentosTabela = ({ movimentos }) => {
       <div className="bg-secondary-50 border-t border-secondary-200 px-4 py-3">
         <div className="flex justify-between items-center">
           <span className="text-sm text-support-600">
-            Total de lançamentos: <strong>{movimentos.length}</strong>
+            Total de movimentos: <strong>{movimentos.length}</strong>
           </span>
           <span className="text-sm font-semibold text-support">
             Valor Total: {' '}

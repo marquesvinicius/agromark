@@ -28,6 +28,7 @@ const HomePage = ({ uploadState, handleFileUpload, handleReset, apiStatus, check
         geminiConnected={apiStatus.geminiConnected}
         loading={apiStatus.loading}
         onRefresh={checkApiStatus}
+        cacheInfo={apiStatus.cacheInfo}
       />
 
       {/* Conteúdo Principal */}
@@ -85,17 +86,29 @@ const HomePage = ({ uploadState, handleFileUpload, handleReset, apiStatus, check
             <div className="lg:col-span-4">
               <div className="space-y-6">
                 
-                {/* Dados Extraídos */}
+                {/* Como Usar */}
                 <div className="card">
                   <h3 className="text-lg font-semibold font-display text-support mb-4 flex items-center">
                     <Database className="w-5 h-5 text-primary-600 mr-2" />
-                    Fluxo Etapa 2
+                    Como Usar
                   </h3>
-                  <div className="space-y-2 text-sm text-support-600 font-body">
-                    <p>1. Faça upload da NF e revise os dados extraídos</p>
-                    <p>2. Clique em <strong>Verificar no Banco</strong> para confirmar cadastros</p>
-                    <p>3. Use <strong>Criar/Atualizar e Lançar</strong> para gravar tudo com segurança</p>
-                    <p>4. Veja o status de EXISTE/NÃO EXISTE diretamente nos cartões</p>
+                  <div className="space-y-3 text-sm text-support-600 font-body">
+                    <div className="flex items-start space-x-2">
+                      <span className="font-semibold text-primary-600 min-w-[20px]">1.</span>
+                      <span>Faça upload do PDF da Nota Fiscal</span>
+                    </div>
+                    <div className="flex items-start space-x-2">
+                      <span className="font-semibold text-primary-600 min-w-[20px]">2.</span>
+                      <span>Revise os dados extraídos automaticamente</span>
+                    </div>
+                    <div className="flex items-start space-x-2">
+                      <span className="font-semibold text-primary-600 min-w-[20px]">3.</span>
+                      <span>Clique em "Verificar no Banco"</span>
+                    </div>
+                    <div className="flex items-start space-x-2">
+                      <span className="font-semibold text-primary-600 min-w-[20px]">4.</span>
+                      <span>Registre o movimento financeiro</span>
+                    </div>
                   </div>
                 </div>
 
@@ -122,23 +135,27 @@ const HomePage = ({ uploadState, handleFileUpload, handleReset, apiStatus, check
                 </div>
 
                 {/* Recursos da Plataforma */}
-                <div className="card bg-primary-50 border-primary-200">
-                  <h3 className="text-lg font-semibold font-display text-primary-600-900 mb-3 flex items-center">
-                    <Rocket className="w-5 h-5 text-primary-600-700 mr-2" />
-                    Lançamento Rápido
+                <div className="card">
+                  <h3 className="text-lg font-semibold font-display text-support mb-4 flex items-center">
+                    <Rocket className="w-5 h-5 text-primary-600 mr-2" />
+                    Recursos
                   </h3>
-                  <div className="space-y-2 text-sm text-primary-600-800 font-body">
+                  <div className="space-y-2 text-sm text-support-600 font-body">
                     <div className="flex items-start space-x-2">
-                      <CheckCircle className="w-4 h-4 text-primary-600-600 mt-1" />
-                      <span>Criação automática de fornecedor, faturado e classificação caso não existam.</span>
+                      <CheckCircle className="w-4 h-4 text-primary-600 mt-1 flex-shrink-0" />
+                      <span>Extração inteligente de dados via IA</span>
                     </div>
                     <div className="flex items-start space-x-2">
-                      <CheckCircle className="w-4 h-4 text-primary-600-600 mt-1" />
-                      <span>Movimento de contas gerado com parcelas e vínculos corretos.</span>
+                      <CheckCircle className="w-4 h-4 text-primary-600 mt-1 flex-shrink-0" />
+                      <span>Cadastro automático de fornecedores</span>
                     </div>
                     <div className="flex items-start space-x-2">
-                      <CheckCircle className="w-4 h-4 text-primary-600-600 mt-1" />
-                      <span>Toast confirma o ID do movimento após o lançamento.</span>
+                      <CheckCircle className="w-4 h-4 text-primary-600 mt-1 flex-shrink-0" />
+                      <span>Geração de parcelas e vínculos</span>
+                    </div>
+                    <div className="flex items-start space-x-2">
+                      <CheckCircle className="w-4 h-4 text-primary-600 mt-1 flex-shrink-0" />
+                      <span>Histórico completo de movimentos</span>
                     </div>
                   </div>
                 </div>
@@ -167,7 +184,8 @@ function App() {
   const [apiStatus, setApiStatus] = useState({
     isOnline: false,
     geminiConnected: null, // null = não verificado, true = online, false = offline
-    loading: true
+    loading: true,
+    cacheInfo: null // Informações de cache do backend
   });
 
   // Verificar status da API ao carregar
@@ -193,7 +211,8 @@ function App() {
       setApiStatus({
         isOnline: apiStatus.success,
         geminiConnected: forceRefresh ? (geminiStatus.success && geminiStatus.data?.status === 'ok') : null,
-        loading: false
+        loading: false,
+        cacheInfo: geminiStatus.data || null // Armazena informações de cache
       });
       
       if (forceRefresh) {
@@ -207,7 +226,8 @@ function App() {
       setApiStatus({
         isOnline: false,
         geminiConnected: null,
-        loading: false
+        loading: false,
+        cacheInfo: null
       });
     }
   };
@@ -299,8 +319,8 @@ function App() {
             } 
           />
           
-          {/* Rota da Página de Lançamentos */}
-          <Route path="/lancamentos" element={<LancamentosPage />} />
+          {/* Rota da Página de Movimentos */}
+          <Route path="/movimentos" element={<LancamentosPage />} />
         </Routes>
       </div>
     </Router>

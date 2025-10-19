@@ -10,12 +10,14 @@ const prisma = require('../utils/prismaClient');
 const healthRouter = express.Router();
 const readinessRouter = express.Router();
 
-// Cache simples em memória para readiness da LLM
+// Cache compartilhado em memória para readiness da LLM
+// Este cache é compartilhado entre TODOS os usuários para evitar spam
 let llmReadinessCache = {
   status: 'unknown',
   checkedAt: null,
   lastCheck: 0,
-  cacheDuration: 10 * 60 * 1000 // 10 minutos
+  cacheDuration: 15 * 60 * 1000, // 15 minutos
+  activeUsers: 0 // Contador de verificações recentes
 };
 
 /**
@@ -109,12 +111,19 @@ healthRouter.get('/detailed', async (req, res) => {
 readinessRouter.get('/', async (req, res) => {
   try {
     const now = Date.now();
+    const cacheAge = now - llmReadinessCache.lastCheck;
+    const remainingTime = Math.max(0, llmReadinessCache.cacheDuration - cacheAge);
 
-    if (now - llmReadinessCache.lastCheck < llmReadinessCache.cacheDuration) {
+    // Se ainda está no período de cache, retorna dados cacheados
+    if (cacheAge < llmReadinessCache.cacheDuration && llmReadinessCache.status !== 'unknown') {
+      llmReadinessCache.activeUsers++;
+      
       return res.json({
         ...llmReadinessCache,
         cached: true,
-        cacheAgeSeconds: Math.round((now - llmReadinessCache.lastCheck) / 1000)
+        cacheAgeSeconds: Math.round(cacheAge / 1000),
+        remainingCacheSeconds: Math.round(remainingTime / 1000),
+        message: `Status cacheado. Próxima verificação disponível em ${Math.round(remainingTime / 1000 / 60)} minutos.`
       });
     }
 
@@ -124,10 +133,13 @@ readinessRouter.get('/', async (req, res) => {
         error: 'GEMINI_API_KEY não configurada',
         checkedAt: new Date().toISOString(),
         lastCheck: now,
-        cacheDuration: llmReadinessCache.cacheDuration
+        cacheDuration: llmReadinessCache.cacheDuration,
+        activeUsers: 1
       };
       return res.status(500).json(llmReadinessCache);
     }
+
+    console.log('🔍 Verificando status da Gemini AI (requisição de usuário)...');
 
     const { GoogleGenerativeAI } = require('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(config.geminiApiKey);
@@ -140,17 +152,24 @@ readinessRouter.get('/', async (req, res) => {
       status: 'ok',
       checkedAt: new Date().toISOString(),
       lastCheck: now,
-      cacheDuration: llmReadinessCache.cacheDuration
+      cacheDuration: llmReadinessCache.cacheDuration,
+      activeUsers: 1,
+      message: 'Gemini AI está online e funcionando.'
     };
 
+    console.log('✅ Gemini AI verificada com sucesso. Cache válido por 15 minutos.');
     res.json(llmReadinessCache);
   } catch (error) {
+    console.error('❌ Erro ao verificar Gemini AI:', error.message);
+    
     llmReadinessCache = {
       status: 'error',
       error: error.message,
       checkedAt: new Date().toISOString(),
       lastCheck: Date.now(),
-      cacheDuration: llmReadinessCache.cacheDuration
+      cacheDuration: llmReadinessCache.cacheDuration,
+      activeUsers: 1,
+      message: 'Gemini AI indisponível no momento.'
     };
     res.status(503).json(llmReadinessCache);
   }

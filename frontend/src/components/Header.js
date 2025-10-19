@@ -53,12 +53,12 @@ const Header = () => {
                 <span>Início</span>
               </Link>
               <Link
-                to="/lancamentos"
+                to="/movimentos"
                 className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-support-600 hover:text-primary-600 hover:bg-secondary-50 rounded-md transition-colors"
-                title="Ver Lançamentos"
+                title="Ver Movimentos Financeiros"
               >
                 <FileText className="w-4 h-4" />
-                <span>Lançamentos</span>
+                <span>Movimentos</span>
               </Link>
             </nav>
 

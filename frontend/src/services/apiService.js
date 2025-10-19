@@ -235,15 +235,19 @@ class ApiService {
   async getMovimentos() {
     try {
       const response = await api.get('/movimentos');
+      
+      // Backend retorna { success: true, data: [...], total: N }
+      const movimentos = response.data.data || [];
+      
       return {
         success: true,
-        data: response.data.data || response.data
+        data: Array.isArray(movimentos) ? movimentos : []
       };
     } catch (error) {
       return {
         success: false,
         error: this.formatError(error),
-        data: null
+        data: []
       };
     }
   }
