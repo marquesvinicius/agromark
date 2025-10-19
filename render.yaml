@@ -1,22 +1,30 @@
-services:
-  # Serviço do Banco de Dados PostgreSQL
-  - type: db
-    name: agromark-postgres
+# Blueprint do Render para o projeto AgroMark
+# Descreve a infraestrutura como código (IaC)
+
+# 1. Definição do Banco de Dados
+databases:
+  - name: agromark-postgres
     databaseName: agromark
-    plan: free
+    plan: free # Importante: o plano gratuito pode "dormir" após inatividade
     postgres:
       majorVersion: 16
 
+# 2. Definição dos Serviços Web (Frontend e Backend)
+services:
   # Serviço do Backend (construído a partir do Dockerfile)
   - type: web
     name: agromark-backend
     plan: free
     env: docker
     dockerfilePath: ./backend/Dockerfile
+    # Otimização: só reconstrói se houver mudanças na pasta 'backend/'
+    buildFilter:
+      paths:
+      - backend/**
     envVars:
       - key: DATABASE_URL
         fromService:
-          type: db
+          type: psql # O tipo correto para referência de BD Postgres
           name: agromark-postgres
           property: connectionString
       - key: GEMINI_API_KEY
@@ -28,6 +36,16 @@ services:
     plan: free
     env: docker
     dockerfilePath: ./frontend/Dockerfile
+    # Otimização: só reconstrói se houver mudanças na pasta 'frontend/'
+    buildFilter:
+      paths:
+      - frontend/**
+    # Regra de reescrita para que as chamadas /api batam no backend
+    routes:
+      - type: rewrite
+        source: /api/:path
+        destination: https://agromark-backend.onrender.com/:path
+    # A variável abaixo não é mais usada pelo código, mas é deixada para clareza
     envVars:
-      - key: VITE_BACKEND_URL # Aponta para o serviço de backend
+      - key: VITE_BACKEND_URL
         value: "https://agromark-backend.onrender.com"
