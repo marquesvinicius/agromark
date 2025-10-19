@@ -10,7 +10,7 @@ COPY . .
 # Adiciona a variável de ambiente para compatibilidade com OpenSSL
 ENV NODE_OPTIONS=--openssl-legacy-provider
 
-RUN npm run build
+RUN npm run build:docker
 
 FROM nginx:1.27-alpine
 
