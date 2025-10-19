@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 
 // Configuração base do axios - Frontend Vercel + Backend Render
 const api = axios.create({
-  baseURL: '/api', // Sempre usar caminho relativo
+  baseURL: process.env.REACT_APP_API_URL,
   timeout: 60000, // 60 segundos para upload e processamento
   headers: {
     'Content-Type': 'application/json',
