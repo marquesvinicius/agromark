@@ -41,14 +41,6 @@ app.use(cors({
 
 // Rate limiting
 const limiter = rateLimit(config.rateLimit);
-app.use('/api/', limiter);
-
-// Rate limiting personalizado para endpoints sensíveis
-app.use('/api/readiness-llm', strictRateLimiter);
-
-// ===== MIDDLEWARES GERAIS =====
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Criar diretório de uploads se não existir
 if (!fs.existsSync(config.upload.uploadDir)) {
@@ -56,7 +48,15 @@ if (!fs.existsSync(config.upload.uploadDir)) {
 }
 
 // ===== ROTAS =====
+// A rota de health check DEVE vir ANTES do rate limiter global
 app.use('/api/health', healthRouter);
+
+// Aplicar Rate Limiter a todas as outras rotas /api
+app.use('/api/', limiter);
+
+// Rate limiting personalizado para endpoints sensíveis
+app.use('/api/readiness-llm', strictRateLimiter);
+
 app.use('/api/readiness-llm', readinessRouter); // Rota separada para LLM
 app.use('/api/upload', uploadRoutes);
 app.use('/api/check', checkRoutes);
