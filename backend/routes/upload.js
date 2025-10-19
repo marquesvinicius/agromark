@@ -10,6 +10,7 @@ const fs = require('fs');
 const pdfParse = require('pdf-parse');
 
 const config = require('../config');
+const prisma = require('../utils/prismaClient');
 const agent01 = require('../services/agent01');
 const { validatePDF, sanitizeFileName } = require('../utils/fileUtils');
 const { isTextScannable } = require('../utils/textUtils');
@@ -169,16 +170,33 @@ router.post('/', upload.single('pdf'), async (req, res) => {
  * GET /api/upload/categories
  * Lista categorias de despesa disponíveis
  */
-router.get('/categories', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Categorias de despesa disponíveis',
-    data: {
-      categories: config.despesaCategorias,
-      count: config.despesaCategorias.length,
-      description: 'Categorias utilizadas para classificação automática de despesas'
-    }
-  });
+router.get('/categories', async (req, res) => {
+  try {
+    const classificacoes = await prisma.classificacao.findMany({
+      where: {
+        tipo: 'DESPESA',
+        status: 'ATIVO'
+      },
+      orderBy: { descricao: 'asc' }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Categorias de despesa disponíveis',
+      data: {
+        categories: classificacoes.map((item) => item.descricao),
+        count: classificacoes.length,
+        description: 'Categorias utilizadas para classificação automática de despesas'
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erro ao listar categorias:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao consultar categorias de despesa',
+      error: error.message
+    });
+  }
 });
 
 /**

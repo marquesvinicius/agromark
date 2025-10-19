@@ -4,7 +4,8 @@
  */
 
 import React from 'react';
-import { Github, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Github, ExternalLink, Home, FileText } from 'lucide-react';
 
 const Header = () => {
   return (
@@ -39,26 +40,49 @@ const Header = () => {
             </div>
           </div>
 
-          {/* Links */}
-          <div className="hidden md:flex items-center space-x-2">
-            <a
-              href="https://github.com/marquesvinicius/agromark"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 text-support-400 hover:text-primary-600 transition-colors"
-              title="Ver no GitHub"
-            >
-              <Github className="w-5 h-5" />
-            </a>
-            <a
-              href="https://github.com/marquesvinicius/agromark/blob/master/frontend/public/API_DOCUMENTATION.md"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 text-support-400 hover:text-primary-600 transition-colors"
-              title="Documentação da API"
-            >
-              <ExternalLink className="w-5 h-5" />
-            </a>
+          {/* Navegação e Links */}
+          <div className="flex items-center space-x-1">
+            {/* Menu de Navegação */}
+            <nav className="hidden md:flex items-center space-x-1 mr-2">
+              <Link
+                to="/"
+                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-support-600 hover:text-primary-600 hover:bg-secondary-50 rounded-md transition-colors"
+                title="Página Inicial"
+              >
+                <Home className="w-4 h-4" />
+                <span>Início</span>
+              </Link>
+              <Link
+                to="/lancamentos"
+                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-support-600 hover:text-primary-600 hover:bg-secondary-50 rounded-md transition-colors"
+                title="Ver Lançamentos"
+              >
+                <FileText className="w-4 h-4" />
+                <span>Lançamentos</span>
+              </Link>
+            </nav>
+
+            {/* Links Externos */}
+            <div className="hidden md:flex items-center space-x-1 border-l border-secondary-200 pl-2">
+              <a
+                href="https://github.com/marquesvinicius/agromark"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 text-support-400 hover:text-primary-600 transition-colors"
+                title="Ver no GitHub"
+              >
+                <Github className="w-5 h-5" />
+              </a>
+              <a
+                href="https://github.com/marquesvinicius/agromark/blob/master/frontend/public/API_DOCUMENTATION.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 text-support-400 hover:text-primary-600 transition-colors"
+                title="Documentação da API"
+              >
+                <ExternalLink className="w-5 h-5" />
+              </a>
+            </div>
           </div>
 
           {/* Menu Mobile */}

@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PessoaTipo {
+  FORNECEDOR
+  FATURADO
+  CLIENTE
+}
+
+enum StatusRegistro {
+  ATIVO
+  INATIVO
+}
+
+enum ClassificacaoTipo {
+  DESPESA
+  RECEITA
+}
+
+enum MovimentoTipo {
+  APAGAR
+  ARECEBER
+}
+
+enum StatusParcela {
+  ABERTA
+  PAGA
+  CANCELADA
+}
+
+model Pessoa {
+  id           Int            @id @default(autoincrement())
+  tipo         PessoaTipo
+  razaoSocial  String
+  fantasia     String?
+  documento    String
+  status       StatusRegistro @default(ATIVO)
+  criadoEm     DateTime       @default(now())
+  atualizadoEm DateTime       @updatedAt
+
+  fornecedorMovimentos MovimentoContas[] @relation("FornecedorMovimentos")
+  faturadoMovimentos   MovimentoContas[] @relation("FaturadoMovimentos")
+
+  @@index([tipo])
+  @@unique([documento, tipo], name: "documento_tipo")
+  @@map("pessoa")
+}
+
+model Classificacao {
+  id           Int                @id @default(autoincrement())
+  tipo         ClassificacaoTipo
+  descricao    String
+  status       StatusRegistro     @default(ATIVO)
+  criadoEm     DateTime           @default(now())
+  atualizadoEm DateTime           @updatedAt
+
+  movimentos   MovimentoClassificacao[]
+
+  @@unique([descricao, tipo], name: "descricao_tipo")
+  @@map("classificacao")
+}
+
+model MovimentoContas {
+  id              Int                     @id @default(autoincrement())
+  tipo            MovimentoTipo           @default(APAGAR)
+  numeroNotaFiscal String
+  dataEmissao     DateTime
+  descricao       String?
+  valorTotal      Decimal                 @db.Decimal(14, 2)
+  status          StatusRegistro          @default(ATIVO)
+  criadoEm        DateTime                @default(now())
+  atualizadoEm    DateTime                @updatedAt
+
+  fornecedorId Int
+  faturadoId   Int
+
+  fornecedor   Pessoa                  @relation("FornecedorMovimentos", fields: [fornecedorId], references: [id])
+  faturado     Pessoa                  @relation("FaturadoMovimentos", fields: [faturadoId], references: [id])
+  parcelas     ParcelaContas[]
+  classificacoes MovimentoClassificacao[]
+  @@map("movimento_contas")
+}
+
+model ParcelaContas {
+  id             Int            @id @default(autoincrement())
+  identificacao  String
+  dataVencimento DateTime
+  valorParcela   Decimal        @db.Decimal(14, 2)
+  valorSaldo     Decimal        @db.Decimal(14, 2)
+  statusParcela  StatusParcela  @default(ABERTA)
+  criadoEm       DateTime       @default(now())
+  atualizadoEm   DateTime       @updatedAt
+
+  movimentoId Int
+  movimento   MovimentoContas @relation(fields: [movimentoId], references: [id])
+
+  @@unique([identificacao], name: "parcela_identificacao_unique")
+  @@map("parcela_contas")
+}
+
+model MovimentoClassificacao {
+  movimentoId    Int
+  classificacaoId Int
+
+  movimento     MovimentoContas @relation(fields: [movimentoId], references: [id])
+  classificacao Classificacao   @relation(fields: [classificacaoId], references: [id])
+
+  @@id([movimentoId, classificacaoId])
+  @@map("movimento_classificacao")
+}
+

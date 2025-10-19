@@ -8,10 +8,7 @@ import toast from 'react-hot-toast';
 
 // Configuração base do axios - Frontend Vercel + Backend Render
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 
-           (process.env.NODE_ENV === 'production' 
-             ? 'https://agromark-backend.onrender.com/api'
-             : 'http://localhost:5000/api'),
+  baseURL: '/api', // Sempre usar caminho relativo
   timeout: 60000, // 60 segundos para upload e processamento
   headers: {
     'Content-Type': 'application/json',
@@ -200,6 +197,52 @@ class ApiService {
       return {
         success: false,
         error: error.message,
+        data: null
+      };
+    }
+  }
+
+  async checkAll(payload) {
+    try {
+      const response = await api.post('/check/all', payload);
+      return response.data;
+    } catch (error) {
+      throw new Error(this.formatError(error));
+    }
+  }
+
+  async createNecessary(payload) {
+    try {
+      const response = await api.post('/create/necessary', payload);
+      return response.data;
+    } catch (error) {
+      throw new Error(this.formatError(error));
+    }
+  }
+
+  async criarMovimento(payload) {
+    try {
+      const response = await api.post('/movimentos', payload);
+      return response.data;
+    } catch (error) {
+      throw new Error(this.formatError(error));
+    }
+  }
+
+  /**
+   * Obtém lista de movimentos/lançamentos financeiros
+   */
+  async getMovimentos() {
+    try {
+      const response = await api.get('/movimentos');
+      return {
+        success: true,
+        data: response.data.data || response.data
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: this.formatError(error),
         data: null
       };
     }

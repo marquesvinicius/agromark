@@ -5,12 +5,14 @@
   "private": true,
   "dependencies": {
     "@craco/craco": "^6.4.3",
+    "agromark-esw424": "file:..",
     "axios": "^1.6.2",
     "lucide-react": "^0.294.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-dropzone": "^14.2.3",
     "react-hot-toast": "^2.4.1",
+    "react-router-dom": "^6.20.1",
     "react-scripts": "4.0.3"
   },
   "scripts": {
@@ -19,7 +21,8 @@
     "test": "craco test",
     "eject": "react-scripts eject"
   },
-  "homepage": ".",
+  "proxy": "http://localhost:5000",
+  "homepage": "https://agromark-topaz.vercel.app",
   "eslintConfig": {
     "extends": [
       "react-app",
@@ -38,7 +41,6 @@
       "last 1 safari version"
     ]
   },
-  "homepage": "https://agromark-topaz.vercel.app",
   "devDependencies": {
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",

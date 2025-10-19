@@ -5,12 +5,15 @@
 
 const express = require('express');
 const config = require('../config');
+const prisma = require('../utils/prismaClient');
 
-const router = express.Router();
+const healthRouter = express.Router();
+const readinessRouter = express.Router();
 
-// Cache para readiness da LLM (endpoint separado)
+// Cache simples em memória para readiness da LLM
 let llmReadinessCache = {
   status: 'unknown',
+  checkedAt: null,
   lastCheck: 0,
   cacheDuration: 10 * 60 * 1000 // 10 minutos
 };
@@ -20,116 +23,37 @@ let llmReadinessCache = {
  * Health check básico - SEM chamadas para LLM
  * Verificações locais e baratas apenas
  */
-router.get('/', (req, res) => {
+healthRouter.get('/', async (req, res) => {
   try {
-    // Verificações locais e baratas
-    const hasGeminiKey = !!config.geminiApiKey;
-    const isProcessAlive = process.uptime() > 0;
-    
-    const ok = hasGeminiKey && isProcessAlive;
-    
-    const healthCheck = {
-      status: ok ? 'ok' : 'error',
+    await prisma.$queryRaw`SELECT 1`;
+
+    const payload = {
+      status: 'ok',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       services: {
         api: 'ok',
-        geminiApiKey: hasGeminiKey ? 'present' : 'missing'
+        database: 'ok',
+        geminiApiKey: config.geminiApiKey ? 'present' : 'missing'
       },
+      environment: config.nodeEnv,
       memory: {
-        used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + ' MB',
-        total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + ' MB'
-      },
-      environment: config.nodeEnv
+        usedMB: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        totalMB: Math.round(process.memoryUsage().heapTotal / 1024 / 1024)
+      }
     };
 
-    // Log para monitoramento
-    console.log(`📋 Health check: ${ok ? 'OK' : 'ERROR'} - Gemini Key: ${hasGeminiKey ? 'present' : 'missing'}`);
-
-    res.status(ok ? 200 : 500).json(healthCheck);
-
+    res.status(200).json(payload);
   } catch (error) {
-    console.error('❌ Erro no health check:', error);
+    console.error('❌ Health check falhou:', error.message);
     res.status(500).json({
       status: 'error',
       timestamp: new Date().toISOString(),
-      message: 'Falha no health check',
-      error: error.message
-    });
-  }
-});
-
-/**
- * GET /api/readiness-llm
- * Endpoint separado para testar LLM manualmente
- * Com cache de 10 minutos para evitar spam
- */
-router.get('/', async (req, res) => {
-  try {
-    const now = Date.now();
-    
-    // Verificar cache primeiro
-    if (now - llmReadinessCache.lastCheck < llmReadinessCache.cacheDuration) {
-      console.log(`📋 LLM Readiness: usando cache (${llmReadinessCache.status})`);
-      return res.json({
-        ...llmReadinessCache,
-        cached: true,
-        cacheAge: Math.round((now - llmReadinessCache.lastCheck) / 1000) + 's'
-      });
-    }
-
-    // Verificar se tem API key
-    if (!config.geminiApiKey) {
-      llmReadinessCache = {
-        status: 'error',
-        error: 'GEMINI_API_KEY não configurada',
-        lastCheck: now,
-        cacheDuration: llmReadinessCache.cacheDuration
-      };
-      return res.status(500).json(llmReadinessCache);
-    }
-
-    console.log('🔄 Testando LLM readiness (fora do cache)...');
-
-    try {
-      // Importação dinâmica para evitar dependência circular
-      const { GoogleGenerativeAI } = require('@google/generative-ai');
-      const genAI = new GoogleGenerativeAI(config.geminiApiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-      
-      // Teste mínimo - apenas ping
-      const result = await model.generateContent("OK");
-      await result.response;
-      
-      llmReadinessCache = {
-        status: 'ok',
-        checkedAt: new Date().toISOString(),
-        lastCheck: now,
-        cacheDuration: llmReadinessCache.cacheDuration
-      };
-      
-      console.log('✅ LLM Readiness: OK');
-      res.json(llmReadinessCache);
-      
-    } catch (llmError) {
-      llmReadinessCache = {
-        status: 'error',
-        error: llmError.message,
-        checkedAt: new Date().toISOString(),
-        lastCheck: now,
-        cacheDuration: llmReadinessCache.cacheDuration
-      };
-      
-      console.warn('⚠️ LLM Readiness: ERROR -', llmError.message);
-      res.status(503).json(llmReadinessCache);
-    }
-
-  } catch (error) {
-    console.error('❌ Erro no readiness LLM:', error);
-    res.status(500).json({
-      status: 'error',
-      error: error.message,
-      timestamp: new Date().toISOString()
+      services: {
+        api: 'ok',
+        database: 'error'
+      },
+      message: 'Falha ao verificar banco de dados'
     });
   }
 });
@@ -138,13 +62,22 @@ router.get('/', async (req, res) => {
  * GET /api/health/detailed
  * Informações detalhadas do sistema (sem LLM)
  */
-router.get('/detailed', (req, res) => {
+healthRouter.get('/detailed', async (req, res) => {
   try {
-    const detailedInfo = {
+    await prisma.$queryRaw`SELECT 1`;
+
+    res.status(200).json({
       timestamp: new Date().toISOString(),
       application: {
         name: 'AgroMark API',
         version: '1.0.0'
+      },
+      environment: config.nodeEnv,
+      configuration: {
+        port: config.port,
+        uploadMaxSizeMB: config.upload.maxFileSize / 1024 / 1024,
+        allowedFileTypes: config.upload.allowedTypes,
+        geminiApiKey: config.geminiApiKey ? 'configured' : 'missing'
       },
       system: {
         nodeVersion: process.version,
@@ -154,26 +87,76 @@ router.get('/detailed', (req, res) => {
         memory: process.memoryUsage(),
         cpu: process.cpuUsage()
       },
-      configuration: {
-        port: config.port,
-        environment: config.nodeEnv,
-        uploadMaxSize: `${config.upload.maxFileSize / 1024 / 1024}MB`,
-        allowedFileTypes: config.upload.allowedTypes,
-        geminiApiKey: config.geminiApiKey ? 'configured' : 'missing'
+      database: {
+        status: 'ok'
       }
-    };
-
-    res.status(200).json(detailedInfo);
-
+    });
   } catch (error) {
-    console.error('❌ Erro no health check detalhado:', error);
+    console.error('❌ Health detalhado falhou:', error.message);
     res.status(500).json({
       status: 'error',
       timestamp: new Date().toISOString(),
-      message: 'Falha no health check detalhado',
-      error: error.message
+      message: 'Falha ao verificar banco de dados'
     });
   }
 });
 
-module.exports = router;
+/**
+ * GET /api/readiness-llm
+ * Endpoint separado para testar LLM manualmente
+ * Com cache de 10 minutos para evitar spam
+ */
+readinessRouter.get('/', async (req, res) => {
+  try {
+    const now = Date.now();
+
+    if (now - llmReadinessCache.lastCheck < llmReadinessCache.cacheDuration) {
+      return res.json({
+        ...llmReadinessCache,
+        cached: true,
+        cacheAgeSeconds: Math.round((now - llmReadinessCache.lastCheck) / 1000)
+      });
+    }
+
+    if (!config.geminiApiKey) {
+      llmReadinessCache = {
+        status: 'error',
+        error: 'GEMINI_API_KEY não configurada',
+        checkedAt: new Date().toISOString(),
+        lastCheck: now,
+        cacheDuration: llmReadinessCache.cacheDuration
+      };
+      return res.status(500).json(llmReadinessCache);
+    }
+
+    const { GoogleGenerativeAI } = require('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(config.geminiApiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+    const result = await model.generateContent('ping');
+    await result.response;
+
+    llmReadinessCache = {
+      status: 'ok',
+      checkedAt: new Date().toISOString(),
+      lastCheck: now,
+      cacheDuration: llmReadinessCache.cacheDuration
+    };
+
+    res.json(llmReadinessCache);
+  } catch (error) {
+    llmReadinessCache = {
+      status: 'error',
+      error: error.message,
+      checkedAt: new Date().toISOString(),
+      lastCheck: Date.now(),
+      cacheDuration: llmReadinessCache.cacheDuration
+    };
+    res.status(503).json(llmReadinessCache);
+  }
+});
+
+module.exports = {
+  healthRouter,
+  readinessRouter
+};

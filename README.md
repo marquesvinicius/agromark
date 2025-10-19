@@ -6,121 +6,232 @@
 
 ## 📋 Sobre o Projeto
 
-O AgroMark é um sistema de gestão financeira focado no agronegócio, projetado para simplificar a administração de despesas. Sua funcionalidade principal é o processamento inteligente de Notas Fiscais em PDF, utilizando a API do Google Gemini para extrair e categorizar dados automaticamente, otimizando o fluxo de trabalho financeiro.
+O AgroMark é um sistema administrativo-financeiro voltado ao agronegócio. Na **Etapa 1** entregamos o fluxo de upload de notas fiscais (PDF) e extração estruturada via Google Gemini. A **Etapa 2** (peso 60%) adiciona persistência relacional com PostgreSQL + Prisma, verificação automática de cadastros e lançamento de movimentos financeiros com parcelas, classificações e controle de status (inativar/reativar).
 
 ## 🛠️ Tecnologias Utilizadas
 
--   **Backend:** Node.js, Express
--   **Frontend:** React, Tailwind CSS
--   **Inteligência Artificial:** Google Gemini 2.5 Flash
--   **Processamento de Arquivos:** Multer (upload), PDF-Parse (extração de texto)
--   **Execução Concorrente:** `concurrently` para o ambiente de desenvolvimento.
+- **Backend:** Node.js, Express, Prisma ORM
+- **Banco:** PostgreSQL (Docker/Compose)
+- **Frontend:** React (CRA) + Tailwind CSS
+- **IA:** Google Gemini 2.5 Flash
+- **Outros:** Multer/PDF-Parse (upload NF), Helmet, CORS, Rate limiting
+- **Infra Etapa 2:** Dockerfiles (backend/frontend) + docker-compose para backend, frontend e banco
 
-## ✨ Funcionalidades Principais
+## ✨ Funcionalidades da Etapa 2
 
--   **Upload Inteligente:** Interface web para upload de arquivos PDF de Notas Fiscais.
--   **Extração Automática:** Utilização da IA do Gemini para extrair dados essenciais:
-    -   **Fornecedor:** Razão social, CNPJ.
-    -   **Faturado:** Nome, CPF/CNPJ.
-    -   **Nota Fiscal:** Número, série, data de emissão.
-    -   **Produtos:** Descrição, quantidade, valores.
-    -   **Financeiro:** Valor total e parcelas.
--   **Categorização Automática:** A IA classifica a despesa em categorias pré-definidas (ex: MANUTENÇÃO, INSUMOS).
--   **Visualização Clara:** Exibição dos dados extraídos de forma organizada na interface, com a opção de visualizar o JSON completo.
+- **Upload + Extração (Etapa 1 mantida):** upload do PDF, extração formatada/JSON via Gemini.
+- **Verificação em Banco:** botão “Verificar no Banco” consulta Postgres e exibe badges “EXISTE — ID” ou “NÃO EXISTE” para fornecedor, faturado e classificação de despesa.
+- **Criação Condicional:** botão “Criar/Atualizar e Lançar” cria cadastros faltantes, registra movimento APAGAR, parcelas e classificações (N:N) em transação Prisma.
+- **Soft-delete por status:** Pessoas e classificações possuem `status` (ATIVO/INATIVO). Endpoints PATCH para inativar/reativar.
+- **Seeds:** Classificações padrão da Etapa 1 pré-cadastradas.
+- **Validações e rate limiting:** Normalização/validação de CPF/CNPJ, retorno 400/409 adequado, proteção em `/api/create/*` e `/api/movimentos`.
+- **Dockerização completa:** Containers independentes para Postgres, backend (com `prisma migrate deploy` no start) e frontend (build estático via Nginx).
 
-## 🚀 Rodando o Projeto Localmente
-
-Siga os passos abaixo para configurar e executar o projeto em seu ambiente de desenvolvimento.
+## 🚀 Setup Local (Desenvolvimento)
 
 ### 1. Pré-requisitos
 
--   [Node.js](https://nodejs.org/) (versão 18 ou superior)
--   [Git](https://git-scm.com/)
+- [Node.js](https://nodejs.org/) 18+
+- [PostgreSQL](https://www.postgresql.org/) (local ou dentro do Docker Compose)
+- [Git](https://git-scm.com/)
 
 ### 2. Instalação
 
 ```bash
-# 1. Clone o repositório
+# Clone o repositório
 git clone https://github.com/marquesvinicius/agromark.git
 cd agromark
 
-# 2. Instale as dependências da raiz, do backend e do frontend
-npm install
+# Instale dependências
 npm --prefix backend install
 npm --prefix frontend install
 ```
 
-### 3. Configuração do Ambiente
+### 3. Configuração do Ambiente (backend/.env)
 
-A API do Gemini é essencial para o funcionamento do backend.
+Crie `backend/.env` com base em `backend/env.example`:
 
-1.  Crie um arquivo `.env` dentro da pasta `backend/`:
-    ```
-    backend/.env
-    ```
-2.  Adicione sua chave da API do Gemini ao arquivo:
-    ```env
-    # Chave obtida no Google AI Studio
-    GEMINI_API_KEY="SUA_CHAVE_AQUI"
+```env
+NODE_ENV=development
+PORT=5000
 
-    # Ambiente de desenvolvimento para habilitar CORS local
-    NODE_ENV="development"
-    ```
-
-### 4. Execução
-
-Execute o seguinte comando a partir da pasta **raiz** do projeto:
-
-```bash
-# Inicia o backend (porta 5000) e o frontend (porta 3000) simultaneamente
-npm run dev
+# Ajuste o host conforme sua instalação do Postgres
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/agromark?schema=public
+GEMINI_API_KEY=SUA_CHAVE_GEMINI_AQUI
+MAX_FILE_SIZE=10485760
 ```
 
--   **Frontend:** Acesse `http://localhost:3000`
--   **Backend:** Disponível em `http://localhost:5000`
+> **Atenção:** a chave da Gemini **não** deve ser utilizada em health-checks. O endpoint `/api/readiness-llm` é separado, com cache e executado apenas manualmente.
 
-## 📊 Endpoints da API
+### 4. Banco de Dados (modo dev)
 
-A API é o coração do projeto. Ela lida com a saúde do sistema, processamento de arquivos e extração de dados.
+```bash
+# Gerar cliente Prisma
+dnpm --prefix backend run prisma:generate
 
-| Método | Endpoint                | Descrição                                                 |
-| :----- | :---------------------- | :-------------------------------------------------------- |
-| `POST` | `/api/upload`           | Envia um PDF para extração de dados.                      |
-| `GET`  | `/api/health`           | Verifica o status básico da API.                          |
-| `GET`  | `/api/readiness-llm`    | Testa a conexão real com a API do Gemini.                 |
-| `GET`  | `/api/upload/categories` | Lista as categorias de despesa disponíveis.               |
+# Criar/aplicar migrações (modo dev)
+npm --prefix backend run prisma:migrate
 
-Para uma visão completa de todos os endpoints, parâmetros e exemplos de resposta, consulte a **[Documentação Completa da API](frontend/public/API_DOCUMENTATION.md)**.
+# Inserir seeds (classificações de despesa)
+npm --prefix backend run prisma:seed
+```
 
-## 📁 Estrutura do Projeto
+### 5. Executar ambiente dev
+
+```bash
+npm --prefix backend run dev   # Backend → http://localhost:5000
+npm --prefix frontend start    # Frontend → http://localhost:3000
+```
+
+### 6. Comandos úteis
+
+- `npm --prefix backend run prisma:migrate` → cria/aplica migrações em dev.
+- `npm --prefix backend run prisma:seed` → executa seeds.
+- `npm --prefix backend run prisma:generate` → atualiza client após alterar schema.
+- `npm --prefix backend run prisma:deploy` → aplica migrações em produção.
+- `npx prisma studio --schema backend/prisma/schema.prisma` → abre Prisma Studio.
+
+## 🐳 Ambiente Docker (produção local)
+
+Ideal para correção do professor.
+
+### Passo a passo
+
+1. **Instale Docker Desktop:** <https://www.docker.com/products/docker-desktop/>
+2. **Crie `backend/.env`:** copie `backend/env.example`, edite `GEMINI_API_KEY`.
+3. **Suba os containers:**
+
+```bash
+docker compose up --build
+```
+
+4. **Acesse:**
+   - Frontend: <http://localhost:3000>
+   - Backend/API: <http://localhost:5000/api>
+
+### Serviços no compose
+
+- `postgres`: banco com volume persistente `pgdata` e healthcheck.
+- `backend`: Express + Prisma; roda `prisma migrate deploy` automaticamente no start.
+- `frontend`: build React servido via Nginx; proxy `/api` para o backend.
+
+### Comandos úteis
+
+- Subir: `docker compose up --build`
+- Parar: `docker compose down`
+- Parar e remover dados: `docker compose down -v`
+- Ver logs: `docker compose logs -f backend`
+- Prisma Studio (via container backend):
+  ```bash
+  docker compose exec backend npx prisma studio
+  ```
+
+## 📊 Endpoints REST (Etapa 2)
+
+Todos retornam JSON.
+
+### Verificação agregada
+
+```bash
+curl -X POST http://localhost:5000/api/check/all \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fornecedor": {"cnpj":"12.345.678/0001-90","razaoSocial":"IGUAÇU MAQUINAS LTDA"},
+    "faturado":   {"cpf":"999.999.999-99","nomeCompleto":"BELTRANO DA SILVA"},
+    "classificacaoDespesa":"MANUTENÇÃO E OPERAÇÃO",
+    "numeroNota":"000123456","dataEmissao":"2025-01-15",
+    "parcelas":[{"dataVencimento":"2025-02-15","valor":1250.00}],
+    "valorTotal":1250.00,
+    "itensDescricao":["Óleo diesel"]
+  }'
+```
+
+### Demais endpoints
+
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| POST | `/api/check/fornecedor` | Verifica fornecedor por CNPJ |
+| POST | `/api/check/faturado` | Verifica faturado por CPF/CNPJ |
+| POST | `/api/check/despesa` | Verifica classificação de despesa |
+| POST | `/api/create/necessary` | Cria fornecedor/faturado/classificação se não existirem |
+| POST | `/api/movimentos` | Cria movimento, parcelas e vínculos N:N (transação Prisma) |
+| PATCH | `/api/pessoas/:id/inativar` | Marca pessoa como INATIVA |
+| PATCH | `/api/pessoas/:id/reativar` | Marca pessoa como ATIVA |
+| PATCH | `/api/classificacoes/:id/inativar` | Inativa classificação |
+| PATCH | `/api/classificacoes/:id/reativar` | Reativa classificação |
+| GET | `/api/upload/categories` | Lista classificações de despesa ativas |
+| GET | `/api/health` | Health check leve (sem IA) |
+| GET | `/api/readiness-llm` | Teste manual/cacheado da LLM |
+
+## 🧱 Modelo de Dados (Prisma)
+
+- `Pessoa`: tipos FORNECEDOR/FATURADO/CLIENTE; documento único por tipo; status ATIVO/INATIVO.
+- `Classificacao`: tipos DESPESA/RECEITA; descrição única por tipo; status.
+- `MovimentoContas`: tipo APAGAR/ARECEBER (usamos APAGAR); ligação com fornecedor/faturado; valor total; status; N:N com classificações.
+- `ParcelaContas`: 1..N parcelas por movimento; identificação única (`numeroNF-parcela-NN`); controle de saldo e status da parcela.
+- `MovimentoClassificacao`: tabela de junção (N:N) com chave composta.
+
+Seeds inserem as classificações utilizadas na Etapa 1.
+
+## 🖥️ Interface (Etapa 2)
+
+- Layout da Etapa 1 mantido.
+- Novos botões:
+  - **Verificar no Banco:** chama `/api/check/all` e exibe badges “EXISTE — ID” ou “NÃO EXISTE”.
+  - **Criar/Atualizar e Lançar:** chama `/api/create/necessary` seguido de `/api/movimentos`; exibe toast verde “Registro lançado com sucesso (Movimento #ID)”.
+- Fallbacks para campos ausentes: UI orienta revisar JSON antes de lançar.
+
+## ✅ Checklist de Aceitação
+
+- [x] `npm run dev` continua funcional (upload + extração).
+- [x] `/api/check/all` retorna EXISTE/NÃO EXISTE com IDs.
+- [x] `/api/create/necessary` cria cadastros ausentes.
+- [x] `/api/movimentos` registra movimento + parcelas + classificações em transação.
+- [x] PATCH (inativar/reativar) funcionando.
+- [x] Seeds aplicados.
+- [x] Health sem IA; readiness LLM separado/cacheado.
+- [x] UI mostra blocos exigidos + toast de sucesso.
+- [x] `docker compose up --build` sobe Postgres + Backend + Front.
+
+## 🗃️ Estrutura
 
 ```
 agromark/
-├── backend/           # API Node.js + Express
-├── frontend/          # Interface React
-│   └── public/
-│       └── API_DOCUMENTATION.md  # Documentação da API
-├── docs/              # Documentação e diagramas do projeto
-├── package.json       # Scripts para rodar o projeto
-└── README.md          # Este arquivo
+├── backend/
+│   ├── prisma/
+│   │   ├── schema.prisma
+│   │   └── seed.js
+│   ├── routes/
+│   │   ├── check.js
+│   │   ├── create.js
+│   │   ├── movimentos.js
+│   │   ├── pessoas.js
+│   │   └── classificacoes.js
+│   ├── utils/
+│   │   ├── documentUtils.js
+│   │   └── prismaClient.js
+│   ├── middleware/rateLimiter.js
+│   ├── config.js
+│   ├── server.js
+│   └── env.example
+├── frontend/
+│   ├── src/components/ResultsDisplay.js
+│   ├── src/services/apiService.js
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   └── ...
+├── docker-compose.yml
+├── README.md
+└── docs/
 ```
 
 ## 🌐 Deploy
 
-O projeto está configurado para deploy contínuo em plataformas separadas para otimizar a performance.
+- **Frontend (React):** Vercel → <https://agromark-esw424.vercel.app>
+- **Backend (Node.js):** Render → <https://agromark-backend.onrender.com/api>
 
--   **Frontend (React):** Vercel, para CDN global e performance.
--   **Backend (Node.js):** Render, para um serviço always-on.
+Configure `GEMINI_API_KEY`, `DATABASE_URL` e afins nas plataformas de deploy.
 
-As variáveis de ambiente (`GEMINI_API_KEY` no backend) devem ser configuradas diretamente nos dashboards dos respectivos serviços.
+## 🙌 Créditos
 
--   **Interface:** `https://agromark-esw424.vercel.app`
--   **API:** `https://agromark-backend.onrender.com/api`
-
-## 🔮 Próximas Etapas (Etapa 2)
-
--   [ ] Cadastro de fornecedores e clientes
--   [ ] Sistema de contas a pagar/receber
--   [ ] Persistência de dados em um banco de dados
--   [ ] Geração de relatórios financeiros
--   [ ] Autenticação de usuários
+Projeto acadêmico de **Marques Vinícius Melo Martins** para ESW424 – Prática de Engenharia de Software.

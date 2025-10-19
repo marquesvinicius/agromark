@@ -4,6 +4,8 @@
  */
 
 import React, { useState } from 'react';
+import { apiService } from '../services/apiService';
+import toast from 'react-hot-toast';
 import { 
   ArrowLeft, 
   Download, 
@@ -21,11 +23,13 @@ import {
   Check,
   BarChart3
 } from 'lucide-react';
-import toast from 'react-hot-toast';
 
 const ResultsDisplay = ({ results, onReset }) => {
   const [activeTab, setActiveTab] = useState('formatted');
   const [copiedField, setCopiedField] = useState(null);
+  const [checkStatus, setCheckStatus] = useState(null);
+  const [isChecking, setIsChecking] = useState(false);
+  const [isLaunching, setIsLaunching] = useState(false);
 
   const copyToClipboard = async (text, fieldName) => {
     try {
@@ -116,6 +120,181 @@ const ResultsDisplay = ({ results, onReset }) => {
     </div>
   );
 
+  const renderStatusBadge = (status) => {
+    if (!status) return null;
+    if (status.exists) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-green-100 text-green-700">
+          EXISTE — ID {status.id}
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
+        NÃO EXISTE
+      </span>
+    );
+  };
+
+  const handleCheckAll = async () => {
+    try {
+      setIsChecking(true);
+      const payload = {
+        fornecedor: {
+          cnpj: results.fornecedor?.cnpj,
+          razaoSocial: results.fornecedor?.razaoSocial
+        },
+        faturado: {
+          cpf: results.faturado?.cpf,
+          cnpj: results.faturado?.cnpj,
+          nomeCompleto: results.faturado?.nome
+        },
+        // compatibilidade com Etapa 1 (campos aninhados)
+        classificacaoDespesa: results.classificacao?.categoria || results?.classificacaoDespesa,
+        classificacoes: results.classificacoes || [],
+        notaFiscal: { // Adiciona o objeto notaFiscal para a nova checagem
+          numero: results.notaFiscal?.numero
+        },
+        numeroNota: results.notaFiscal?.numero || results?.notaFiscal?.numeroNota,
+        dataEmissao: results.notaFiscal?.dataEmissao,
+        parcelas: results.financeiro?.parcelas?.map((parcela, index) => ({
+          numero: parcela.numero || index + 1,
+          dataVencimento: parcela.dataVencimento,
+          valor: parcela.valor
+        })) || [],
+        valorTotal: results.financeiro?.valorTotal,
+        itensDescricao: results.produtos?.map((item) => item.descricao) || []
+      };
+
+      const response = await apiService.checkAll(payload);
+      
+      // Verificar se o movimento já existe baseado no número da nota fiscal
+      let movimentoExists = false;
+      if (results.notaFiscal?.numero) {
+        try {
+          const movimentosResponse = await apiService.getMovimentos();
+          if (movimentosResponse.success && movimentosResponse.data) {
+            const movimentoExistente = movimentosResponse.data.find(
+              m => m.numeroNotaFiscal === results.notaFiscal?.numero
+            );
+            movimentoExists = !!movimentoExistente;
+          }
+        } catch (error) {
+          console.warn('Não foi possível verificar movimentos existentes:', error);
+        }
+      }
+      
+      // Adicionar informação sobre o movimento ao status
+      const statusComMovimento = {
+        ...response,
+        movimento: {
+          exists: movimentoExists
+        }
+      };
+      
+      setCheckStatus(statusComMovimento);
+      
+      if (movimentoExists) {
+        toast.success('Verificação concluída - Movimento já existe');
+      } else {
+        toast.success('Verificação concluída - Pronto para registrar');
+      }
+    } catch (error) {
+      toast.error(error.message || 'Erro ao verificar dados');
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const handleCreateAndLaunch = async () => {
+    if (!checkStatus) {
+      toast.error('Verifique no banco antes de lançar.');
+      return;
+    }
+
+    const categoriaBase = (results.classificacao?.categoria || results?.classificacaoDespesa || '').toString().trim();
+    if (!categoriaBase) {
+      toast.error('Classificação de despesa ausente. Revise os dados extraídos.');
+      return;
+    }
+
+    if (!results.notaFiscal?.numero) {
+      toast.error('Número da Nota Fiscal não encontrado. Verifique a extração antes de lançar.');
+      return;
+    }
+
+    if (!results.financeiro?.valorTotal) {
+      toast.error('Valor total não identificado. Ajuste o JSON antes de lançar.');
+      return;
+    }
+
+    try {
+      setIsLaunching(true);
+
+      const basePayload = {
+        fornecedor: {
+          cnpj: results.fornecedor?.cnpj,
+          razaoSocial: results.fornecedor?.razaoSocial,
+          fantasia: results.fornecedor?.nomeFantasia
+        },
+        faturado: {
+          cpf: results.faturado?.cpf,
+          cnpj: results.faturado?.cnpj,
+          nome: results.faturado?.nome
+        },
+        classificacaoDespesa: categoriaBase,
+        classificacoes: [categoriaBase]
+      };
+
+      const creation = await apiService.createNecessary(basePayload);
+
+      const parcelasOriginais = Array.isArray(results.financeiro?.parcelas)
+        ? results.financeiro.parcelas
+        : [];
+
+      const movimentoPayload = {
+        movimento: {
+          numeroNotaFiscal: results.notaFiscal?.numero,
+          dataEmissao: results.notaFiscal?.dataEmissao,
+          valorTotal: results.financeiro?.valorTotal,
+          descricao: results.classificacao?.observacoes || results.notaFiscal?.descricao || 'Lançamento automático',
+          fornecedorId: creation.fornecedorId,
+          faturadoId: creation.faturadoId
+        },
+        parcelas: parcelasOriginais.map((parcela, index) => ({
+          identificacao: `${results.notaFiscal?.numero}-parcela-${String(index + 1).padStart(2, '0')}`,
+          dataVencimento: parcela.dataVencimento,
+          valor: parcela.valor,
+          valorSaldo: parcela.valor ?? parcela.valorParcela ?? parcela.valorTotal ?? parcela.valor
+        })),
+        classificacoes: creation.classificacaoIds
+      };
+
+      if (movimentoPayload.parcelas.length === 0 && results.financeiro?.valorTotal) {
+        movimentoPayload.parcelas.push({
+          identificacao: `${results.notaFiscal?.numero}-parcela-01`,
+          dataVencimento: results.financeiro?.parcelas?.[0]?.dataVencimento || results.notaFiscal?.dataEmissao,
+          valor: results.financeiro?.valorTotal,
+          valorSaldo: results.financeiro?.valorTotal
+        });
+      }
+
+      const movimento = await apiService.criarMovimento(movimentoPayload);
+
+      toast.success(`Registro lançado com sucesso (Movimento #${movimento.movimentoId})`);
+      setCheckStatus({
+        fornecedor: { exists: true, id: creation.fornecedorId },
+        faturado: { exists: true, id: creation.faturadoId },
+        despesa: { exists: true, id: creation.classificacaoIds[0] },
+        movimento: { exists: true, id: movimento.movimentoId } // AQUI ESTÁ O ERRO DE DIGITAÇÃO SUTIL
+      });
+    } catch (error) {
+      toast.error(error.message || 'Erro ao lançar movimento');
+    } finally {
+      setIsLaunching(false);
+    }
+  };
+
   const DataRow = ({ label, value, copyable = false, fieldName }) => (
     <div className="py-2 border-b border-gray-100 last:border-b-0">
       <div className="flex justify-between items-center">
@@ -144,25 +323,50 @@ const ResultsDisplay = ({ results, onReset }) => {
         </button>
       </div>
 
-      {/* Header com Título e Botão Baixar */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            Dados Extraídos
-          </h2>
-          <p className="text-gray-600">
-            Processado em {formatDate(results.metadata?.processedAt)}
-          </p>
-        </div>
+      {/* Header com Título e Botões de Ação */}
+      <div className="card bg-gradient-to-r from-primary-50 to-white border-primary-100">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          {/* Título */}
+          <div className="flex-1">
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">
+              Dados Extraídos
+            </h2>
+            <p className="text-sm text-gray-600">
+              Processado em {formatDate(results.metadata?.processedAt)}
+            </p>
+          </div>
 
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={downloadJSON}
-            className="btn-primary flex items-center justify-center"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Baixar JSON
-          </button>
+          {/* Botões de Ação */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Verificar no Banco */}
+            <button
+              onClick={handleCheckAll}
+              disabled={isChecking}
+              className="btn-secondary flex items-center justify-center whitespace-nowrap"
+              title="Verificar se fornecedor, faturado e classificação existem no banco"
+            >
+              <BarChart3 className="w-4 h-4 mr-2" />
+              {isChecking ? 'Verificando...' : 'Verificar no Banco'}
+            </button>
+
+            {/* Criar/Atualizar e Lançar */}
+            <button
+              onClick={handleCreateAndLaunch}
+              disabled={isLaunching || !checkStatus}
+              className="btn-primary flex items-center justify-center whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+              title={!checkStatus ? 'Clique em "Verificar no Banco" primeiro' : 'Criar registros necessários e lançar movimento financeiro'}
+            >
+              <Check className="w-4 h-4 mr-2" />
+              {isLaunching 
+                ? 'Processando...' 
+                : !checkStatus 
+                  ? 'Verificar Primeiro'
+                  : checkStatus.movimento?.exists 
+                    ? 'Atualizar Movimento'
+                    : 'Registrar Movimento'
+              }
+            </button>
+          </div>
         </div>
       </div>
 
@@ -201,6 +405,7 @@ const ResultsDisplay = ({ results, onReset }) => {
           {/* Fornecedor */}
           <InfoCard icon={Building2} title="Fornecedor">
             <div className="space-y-2">
+              {renderStatusBadge(checkStatus?.fornecedor)}
               <DataRow 
                 label="Razão Social" 
                 value={results.fornecedor?.razaoSocial} 
@@ -237,6 +442,7 @@ const ResultsDisplay = ({ results, onReset }) => {
           {/* Cliente/Faturado */}
           <InfoCard icon={User} title="Cliente/Faturado">
             <div className="space-y-2">
+              {renderStatusBadge(checkStatus?.faturado)}
               <DataRow 
                 label="Nome" 
                 value={results.faturado?.nome} 
@@ -267,6 +473,7 @@ const ResultsDisplay = ({ results, onReset }) => {
           {/* Nota Fiscal */}
           <InfoCard icon={FileText} title="Nota Fiscal">
             <div className="space-y-2">
+              {renderStatusBadge(checkStatus?.movimento)}
               <DataRow 
                 label="Número" 
                 value={results.notaFiscal?.numero} 
@@ -297,6 +504,7 @@ const ResultsDisplay = ({ results, onReset }) => {
           {/* Classificação */}
           <InfoCard icon={Tag} title="Classificação">
             <div className="space-y-2">
+              {renderStatusBadge(checkStatus?.despesa)}
               <DataRow 
                 label="Categoria" 
                 value={results.classificacao?.categoria} 
@@ -416,13 +624,23 @@ const ResultsDisplay = ({ results, onReset }) => {
         <div className="card">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Dados em JSON</h3>
-            <button
-              onClick={() => copyToClipboard(JSON.stringify(results, null, 2), 'JSON completo')}
-              className="btn-secondary flex items-center justify-center"
-            >
-              <Copy className="w-4 h-4 mr-2" />
-              Copiar JSON
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => copyToClipboard(JSON.stringify(results, null, 2), 'JSON completo')}
+                className="btn-secondary flex items-center justify-center"
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Copiar JSON
+              </button>
+              <button
+                onClick={downloadJSON}
+                className="btn-secondary flex items-center justify-center"
+                title="Baixar dados extraídos em formato JSON"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Baixar JSON
+              </button>
+            </div>
           </div>
           
           <div className="bg-gray-900 rounded-lg p-4 overflow-x-auto">

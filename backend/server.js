@@ -15,7 +15,12 @@ const fs = require('fs');
 
 const config = require('./config');
 const uploadRoutes = require('./routes/upload');
-const healthRoutes = require('./routes/health');
+const checkRoutes = require('./routes/check');
+const createRoutes = require('./routes/create');
+const movimentosRoutes = require('./routes/movimentos');
+const pessoasRoutes = require('./routes/pessoas');
+const classificacoesRoutes = require('./routes/classificacoes');
+const { healthRouter, readinessRouter } = require('./routes/health');
 const { rateLimiter, strictRateLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
@@ -51,9 +56,14 @@ if (!fs.existsSync(config.upload.uploadDir)) {
 }
 
 // ===== ROTAS =====
-app.use('/api/health', healthRoutes);
-app.use('/api/readiness-llm', healthRoutes); // Rota separada para LLM
+app.use('/api/health', healthRouter);
+app.use('/api/readiness-llm', readinessRouter); // Rota separada para LLM
 app.use('/api/upload', uploadRoutes);
+app.use('/api/check', checkRoutes);
+app.use('/api/create', createRoutes);
+app.use('/api/movimentos', movimentosRoutes);
+app.use('/api/pessoas', pessoasRoutes);
+app.use('/api/classificacoes', classificacoesRoutes);
 
 // Rota raiz
 app.get('/', (req, res) => {

@@ -33,18 +33,21 @@ const config = {
     'INSUMOS AGRÍCOLAS',
     'RECURSOS HUMANOS',
     'SERVIÇOS OPERACIONAIS',
-    'COMBUSTÍVEIS E LUBRIFICANTES',
-    'EQUIPAMENTOS E FERRAMENTAS',
-    'OUTROS'
+    'ADMINISTRATIVAS',
+    'SEGUROS E PROTEÇÃO',
+    'IMPOSTOS E TAXAS',
+    'INVESTIMENTOS'
   ]
 };
 
-// Validação OBRIGATÓRIA da API Key do Gemini
+// Aviso quando chave Gemini estiver ausente em produção
 if (!config.geminiApiKey) {
-  console.error('❌ ERRO CRÍTICO: GEMINI_API_KEY não encontrada!');
-  console.error('   Configure no arquivo .env: GEMINI_API_KEY=sua_key_aqui');
-  console.error('   Ou nas variáveis de ambiente da Vercel');
-  process.exit(1); // Para a aplicação se não tiver a key
+  const message = '⚠️ GEMINI_API_KEY não configurada. Endpoints que usam IA ficarão indisponíveis.';
+  if (config.nodeEnv === 'production') {
+    console.error(message);
+  } else {
+    console.warn(message);
+  }
 }
 
 module.exports = config;
