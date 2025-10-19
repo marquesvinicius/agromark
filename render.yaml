@@ -1,18 +1,33 @@
 services:
+  # Serviço do Banco de Dados PostgreSQL
+  - type: db
+    name: agromark-postgres
+    databaseName: agromark
+    plan: free
+    postgres:
+      majorVersion: 16
+
+  # Serviço do Backend (construído a partir do Dockerfile)
   - type: web
     name: agromark-backend
-    env: node
     plan: free
-    rootDir: backend
-    buildCommand: npm install
-    startCommand: npm start
-    healthCheckPath: /api/health
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
     envVars:
-      - key: NODE_ENV
-        value: production
+      - key: DATABASE_URL
+        fromService:
+          type: db
+          name: agromark-postgres
+          property: connectionString
       - key: GEMINI_API_KEY
-        sync: false # Configure manualmente no dashboard do Render
-      - key: MAX_FILE_SIZE
-        value: 10485760
-      - key: ALLOWED_FILE_TYPES
-        value: pdf
+        sync: false # Importante: Será configurado manualmente no dashboard
+
+  # Serviço do Frontend (construído a partir do Dockerfile)
+  - type: web
+    name: agromark-frontend
+    plan: free
+    env: docker
+    dockerfilePath: ./frontend/Dockerfile
+    envVars:
+      - key: VITE_BACKEND_URL # Aponta para o serviço de backend
+        value: "https://agromark-backend.onrender.com"
