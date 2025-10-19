@@ -27,17 +27,24 @@ const app = express();
 
 // ===== MIDDLEWARES DE SEGURANÇA =====
 app.use(helmet());
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? [
-        'https://agromark-topaz.vercel.app',
-        'https://agromark-esw424.vercel.app',
-        'https://agromark-frontend.vercel.app',
-        /\.vercel\.app$/  // Qualquer subdomínio .vercel.app
-      ]
-    : ['http://localhost:3000'],
+
+// Configuração de CORS para produção e desenvolvimento
+const whitelist = [
+  'http://localhost:3000', // Desenvolvimento local
+  'https://agromark-frontend.onrender.com' // URL do frontend no Render
+];
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Permite requisições sem 'origin' (ex: Postman, apps mobile) ou se a origem estiver na whitelist
+    if (!origin || whitelist.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
-}));
+};
+app.use(cors(corsOptions));
 
 // Rate limiting
 const limiter = rateLimit(config.rateLimit);

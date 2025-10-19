@@ -23,7 +23,7 @@ services:
     envVars:
       - key: DATABASE_URL
         fromService:
-          type: psql # O tipo correto para referência de BD Postgres
+          type: postgres # Correção: O tipo correto de serviço para Postgres é 'postgres'
           name: agromark-postgres
           property: connectionString
       - key: GEMINI_API_KEY
@@ -39,12 +39,9 @@ services:
     buildFilter:
       paths:
       - frontend/**
-    # Regra de reescrita para que as chamadas /api batam no backend
-    routes:
-      - type: rewrite
-        source: /api/:path
-        destination: https://agromark-backend.onrender.com/:path
-    # A variável abaixo não é mais usada pelo código, mas é deixada para clareza
+    # AVISO: A seção 'routes' foi removida. Regras de reescrita não são
+    # suportadas para serviços do tipo 'docker' no Render. A comunicação
+    # entre frontend e backend será feita via CORS no backend.
     envVars:
-      - key: VITE_BACKEND_URL
+      - key: VITE_BACKEND_URL # Aponta para o serviço de backend
         value: "https://agromark-backend.onrender.com"
