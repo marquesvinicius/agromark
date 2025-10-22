@@ -168,34 +168,20 @@ const ResultsDisplay = ({ results, onReset }) => {
 
       const response = await apiService.checkAll(payload);
       
-      // Verificar se o movimento já existe baseado no número da nota fiscal
-      let movimentoExists = false;
-      if (results.notaFiscal?.numero) {
-        try {
-          const movimentosResponse = await apiService.getMovimentos();
-          if (movimentosResponse.success && movimentosResponse.data) {
-            const movimentoExistente = movimentosResponse.data.find(
-              m => m.numeroNotaFiscal === results.notaFiscal?.numero
-            );
-            movimentoExists = !!movimentoExistente;
-          }
-        } catch (error) {
-          console.warn('Não foi possível verificar movimentos existentes:', error);
-        }
-      }
-      
-      // Adicionar informação sobre o movimento ao status
-      const statusComMovimento = {
+      // O backend já verifica e retorna o movimento com ID (se existir)
+      // Apenas garantir que temos a estrutura correta
+      const statusCompleto = {
         ...response,
-        movimento: {
-          exists: movimentoExists
-        }
+        // Se o backend já retornou movimento, manter como está
+        // Caso contrário, criar estrutura padrão
+        movimento: response.movimento || { exists: false }
       };
       
-      setCheckStatus(statusComMovimento);
+      setCheckStatus(statusCompleto);
       
-      if (movimentoExists) {
-        toast.success('Verificação concluída - Movimento já existe');
+      // Mensagem baseada no status retornado pelo backend
+      if (response.movimento?.exists) {
+        toast.success(`Verificação concluída - Nota Fiscal já registrada (ID ${response.movimento.id})`);
       } else {
         toast.success('Verificação concluída - Pronto para registrar');
       }
