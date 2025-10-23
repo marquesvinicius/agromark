@@ -19,9 +19,11 @@ ENV NODE_OPTIONS=--openssl-legacy-provider
 
 RUN npm run build
 
+# Estágio de produção
 FROM nginx:1.27-alpine
 
-COPY --from=builder /app/build /usr/share/nginx/html
+# Copiar os arquivos buildados do estágio 'build'
+COPY --from=build /app/build /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 3000
