@@ -1,10 +1,17 @@
-FROM node:20-alpine AS builder
+# Estágio de build
+FROM node:18-alpine AS build
+
+# Aceitar o argumento de build e defini-lo como uma variável de ambiente
+ARG REACT_APP_API_URL=/api
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
 
 WORKDIR /app
 
+# Copiar package.json e package-lock.json
 COPY package.json package-lock.json ./
 RUN npm ci
 
+# Copiar o resto do código
 COPY . .
 
 # Adiciona a variável de ambiente para compatibilidade com OpenSSL
