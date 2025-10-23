@@ -217,7 +217,14 @@ const ResultsDisplay = ({ results, onReset }) => {
     try {
       setIsLaunching(true);
 
-      const basePayload = {
+      const categoria = results.classificacao?.categoria?.toString().trim().toUpperCase();
+      if (!categoria) {
+        toast.error('Categoria da despesa não encontrada na extração.');
+        setIsLaunching(false);
+        return;
+      }
+
+      const creationPayload = {
         fornecedor: {
           cnpj: results.fornecedor?.cnpj,
           razaoSocial: results.fornecedor?.razaoSocial,
@@ -228,11 +235,10 @@ const ResultsDisplay = ({ results, onReset }) => {
           cnpj: results.faturado?.cnpj,
           nome: results.faturado?.nome
         },
-        classificacaoDespesa: categoriaBase,
-        classificacoes: [categoriaBase]
+        classificacaoDespesa: categoria
       };
 
-      const creation = await apiService.createNecessary(basePayload);
+      const creation = await apiService.createNecessary(creationPayload);
 
       const parcelasOriginais = Array.isArray(results.financeiro?.parcelas)
         ? results.financeiro.parcelas

@@ -229,6 +229,15 @@ class ApiService {
     }
   }
 
+  async deletarMovimento(id) {
+    try {
+      const response = await api.delete(`/movimentos/${id}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(this.formatError(error));
+    }
+  }
+
   /**
    * Obtém lista de movimentos/lançamentos financeiros
    */
@@ -304,6 +313,7 @@ class ApiService {
         401: 'Não autorizado',
         403: 'Acesso negado',
         404: 'Recurso não encontrado',
+        409: 'Documento já existe no banco',
         413: 'Arquivo muito grande',
         429: 'Muitas tentativas',
         500: 'Erro interno do servidor',

@@ -102,7 +102,7 @@ Ideal para correção do professor.
 3. **Suba os containers:**
 
 ```bash
-docker compose up --build
+docker compose up --build -d
 ```
 
 4. **Acesse:**
@@ -112,12 +112,12 @@ docker compose up --build
 ### Serviços no compose
 
 - `postgres`: banco com volume persistente `pgdata` e healthcheck.
-- `backend`: Express + Prisma; roda `prisma migrate deploy` automaticamente no start.
-- `frontend`: build React servido via Nginx; proxy `/api` para o backend.
+- `backend`: Express + Prisma; roda `prisma migrate deploy` automaticamente no start. Inclui `app.set('trust proxy', 1)` para funcionar atrás do Nginx do frontend.
+- `frontend`: build React servido via Nginx; proxy de todas as chamadas `/api` para o backend (Docker). O build do React recebe `REACT_APP_API_URL=/api` via ARG.
 
 ### Comandos úteis
 
-- Subir: `docker compose up --build`
+- Subir: `docker compose up --build -d`
 - Parar: `docker compose down`
 - Parar e remover dados: `docker compose down -v`
 - Ver logs: `docker compose logs -f backend`
@@ -125,6 +125,79 @@ docker compose up --build
   ```bash
   docker compose exec backend npx prisma studio
   ```
+
+### Consultar Postgres do Docker
+
+- GUI (DBeaver/TablePlus)
+  - Host: `localhost`
+  - Port: `5432`
+  - Database: `agromark`
+  - User: `postgres`
+  - Password: `postgres`
+- CLI dentro do container
+  ```bash
+  docker compose exec postgres psql -U postgres -d agromark
+  ```
+  Comandos no psql: `\dt`, `SELECT COUNT(*) FROM pessoa;`, `\q`
+
+## 🧩 Regras de validação e mensagens
+
+- CPF/CNPJ (acadêmico): validação **relaxada** (apenas quantidade de dígitos) para permitir documentos genéricos (ex.: `999.999.999-99`).
+- Classificação: se não vier descrição, o backend assume `OUTROS`.
+- Lançamento de movimentos (`POST /api/movimentos`):
+  - Bloqueio de duplicidade por NF + fornecedor → `409 MOVIMENTO_JA_EXISTE` com mensagem amigável.
+  - Identificação de parcelas é única. Agora utiliza padrão `numeroNF-<idMovimento>-parcela-XX` para evitar colisões históricas.
+  - Caso ainda ocorra colisão, o backend adiciona sufixo único de segurança.
+- Exclusão de movimentos: `DELETE /api/movimentos/:id` remove movimento, parcelas e vínculos em transação.
+
+## 🖥️ UI – Ações recentes
+
+- Página “Movimentos”: adicionada coluna **Ações** com botão de lixeira (cores do tema) para exclusão. Após excluir, a lista é recarregada.
+- Página principal: fluxo “Verificar no Banco” ➜ “Registrar Movimento” com toasts e mensagens do backend (inclui 409 amigável quando repetido).
+
+## ⚙️ Notas de infraestrutura e troubleshooting
+
+- CORS: produção aceita domínios `.vercel.app` e os domínios listados no `server.js`; desenvolvimento aceita `http://localhost:3000`.
+- Rate limiting: health-check de plataforma foi isolado – a rota `/api/health` fica **fora** do rate limiter global para evitar `429` em health checks.
+- Proxy/Nginx (frontend Docker): todo request à API deve ir para `/api/...`. O frontend usa `REACT_APP_API_URL` definido como `/api` no build do Docker.
+- Se ver `ValidationError: The 'X-Forwarded-For' header...` habilite `app.set('trust proxy', 1)` (já aplicado).
+
+## 🌐 Deploy (Vercel + Render)
+
+### Frontend (Vercel)
+
+1. Importar o repositório e definir **Root Directory**: `frontend`.
+2. Variáveis de ambiente:
+   - `REACT_APP_API_URL`: URL pública do backend + `/api`, ex.: `https://agromark-backend.onrender.com/api`
+3. Build Command/Output: deixe nos padrões da Vercel (CRA) — sem override.
+
+### Backend (Render)
+
+1. Criar banco PostgreSQL gerenciado e copiar a **Internal Database URL**.
+2. Criar Web Service do backend com Root Directory `backend` (Dockerfile detectado).
+3. Variáveis de ambiente:
+   - `DATABASE_URL` = Internal Database URL
+   - `GEMINI_API_KEY`
+4. Build/Deploy:
+   - Build: padrão (usa Dockerfile do backend) e aplica `npx prisma migrate deploy` durante o start.
+5. Seed (plano gratuito, sem jobs):
+   - Temporariamente altere o Start Command para `npx prisma db seed && npm start`.
+   - Aguarde o deploy, verifique os dados, e **retorne** o Start Command para `npm start`.
+
+### Dicas de troubleshooting
+
+- 404 ao chamar `/health` na Vercel: lembre-se de setar `REACT_APP_API_URL` com `/api` ao final no valor.
+- 429 na Render (health): a rota `/api/health` já está fora do rate limiter.
+- 405 no Docker ao fazer upload: verifique `frontend/nginx.conf` (proxy de `/api/` para o backend) e reconstrução com `docker compose up --build`.
+
+## 📦 Variáveis de ambiente (resumo)
+
+- Frontend (Vercel/Docker build):
+  - `REACT_APP_API_URL` (Vercel: `https://.../api`, Docker: `/api` via ARG no Dockerfile do frontend)
+- Backend (Render/Docker):
+  - `DATABASE_URL`
+  - `GEMINI_API_KEY`
+  - `PORT`, `MAX_FILE_SIZE` (opcional)
 
 ## 📊 Endpoints REST (Etapa 2)
 

@@ -108,7 +108,7 @@ const LancamentosPage = () => {
 
           {/* Tabela de Movimentos */}
           {!isLoading && !error && (
-            <LancamentosTabela movimentos={movimentos} />
+            <LancamentosTabela movimentos={movimentos} onDeleted={carregarMovimentos} />
           )}
 
         </div>

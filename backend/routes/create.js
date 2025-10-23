@@ -18,6 +18,8 @@ router.post('/necessary', async (req, res) => {
       cliente
     } = req.body || {};
 
+    // Bypass da validação de documentos para ambiente acadêmico
+    /*
     const fornecedorCnpj = normalizeDocumento(fornecedor.cnpj || fornecedor.documento);
     if (!isValidCNPJ(fornecedorCnpj)) {
       return res.status(400).json({
@@ -36,13 +38,21 @@ router.post('/necessary', async (req, res) => {
         message: 'Documento do faturado inválido.'
       });
     }
+    */
+    const fornecedorCnpj = normalizeDocumento(fornecedor.cnpj || fornecedor.documento);
+    const faturadoDocumento = normalizeDocumento(
+      faturado.cpf || faturado.cnpj || faturado.documento || cliente?.documento
+    );
 
-    const descricao = (classificacaoDespesa || classificacoes?.[0] || '').toString().trim().toUpperCase();
+    // Descrição da classificação: aceitar vazio e padronizar
+    let descricao = (classificacaoDespesa || (Array.isArray(classificacoes) ? classificacoes[0] : classificacoes) || '')
+      .toString()
+      .trim()
+      .toUpperCase();
+
     if (!descricao) {
-      return res.status(400).json({
-        error: 'INVALID_DESCRIPTION',
-        message: 'Descrição da classificação de despesa é obrigatória.'
-      });
+      // fallback amigável para ambiente acadêmico
+      descricao = 'OUTROS';
     }
 
     const fornecedorRecord = await prisma.pessoa.upsert({

@@ -4,9 +4,10 @@
  */
 
 import React from 'react';
-import { FileText, Calendar, DollarSign, Users } from 'lucide-react';
+import { FileText, Calendar, DollarSign, Users, Trash2 } from 'lucide-react';
+import { apiService } from '../services/apiService';
 
-const LancamentosTabela = ({ movimentos }) => {
+const LancamentosTabela = ({ movimentos, onDeleted }) => {
   /**
    * Formata data no formato dd/mm/yyyy
    */
@@ -92,6 +93,9 @@ const LancamentosTabela = ({ movimentos }) => {
                   <span>Valor Total</span>
                 </div>
               </th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-support uppercase tracking-wider">
+                Ações
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-secondary-200">
@@ -114,6 +118,24 @@ const LancamentosTabela = ({ movimentos }) => {
                 </td>
                 <td className="px-4 py-3 text-sm font-semibold text-primary-600 text-right">
                   {formatarMoeda(movimento.valorTotal)}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <button
+                    onClick={async () => {
+                      if (!window.confirm('Deseja excluir este movimento?')) return;
+                      try {
+                        await apiService.deletarMovimento(movimento.id);
+                        if (onDeleted) onDeleted();
+                      } catch (e) {
+                        console.error('Erro ao excluir movimento:', e);
+                        alert(e.message || 'Erro ao excluir movimento');
+                      }
+                    }}
+                    className="inline-flex items-center px-2 py-1 rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-300"
+                    title="Excluir movimento"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </td>
               </tr>
             ))}

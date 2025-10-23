@@ -25,6 +25,9 @@ const { rateLimiter, strictRateLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
 
+// Confiar no primeiro proxy (Nginx no Docker, serviço da Render, etc.)
+app.set('trust proxy', 1);
+
 // ===== MIDDLEWARES DE SEGURANÇA =====
 app.use(helmet());
 app.use(cors({
@@ -38,6 +41,10 @@ app.use(cors({
     : ['http://localhost:3000'],
   credentials: true
 }));
+
+// ===== MIDDLEWARES GERAIS =====
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Rate limiting
 const limiter = rateLimit(config.rateLimit);
