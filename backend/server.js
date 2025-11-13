@@ -20,6 +20,7 @@ const createRoutes = require('./routes/create');
 const movimentosRoutes = require('./routes/movimentos');
 const pessoasRoutes = require('./routes/pessoas');
 const classificacoesRoutes = require('./routes/classificacoes');
+const agentRoutes = require('./routes/agent'); // Importar a nova rota
 const { healthRouter, readinessRouter } = require('./routes/health');
 const { rateLimiter, strictRateLimiter } = require('./middleware/rateLimiter');
 
@@ -71,6 +72,7 @@ app.use('/api/create', createRoutes);
 app.use('/api/movimentos', movimentosRoutes);
 app.use('/api/pessoas', pessoasRoutes);
 app.use('/api/classificacoes', classificacoesRoutes);
+app.use('/api/agent', agentRoutes); // Registrar a nova rota
 
 // Rota raiz
 app.get('/', (req, res) => {

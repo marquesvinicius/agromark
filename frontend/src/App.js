@@ -16,6 +16,7 @@ import ResultsDisplay from './components/ResultsDisplay';
 import StatusCard from './components/StatusCard';
 import Footer from './components/Footer';
 import LancamentosPage from './pages/LancamentosPage';
+import AgentPage from './pages/AgentPage'; // 1. Importar a nova página
 import { apiService } from './services/apiService';
 
 // Componente da Página Inicial (Upload)
@@ -321,6 +322,11 @@ function App() {
           
           {/* Rota da Página de Movimentos */}
           <Route path="/movimentos" element={<LancamentosPage />} />
+
+          {/* 2. Rota da Página do Agente */}
+          <Route path="/agent" element={<AgentPage />} />
+
+          {/* A rota /about-mark foi removida */}
         </Routes>
       </div>
     </Router>

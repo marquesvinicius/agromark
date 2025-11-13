@@ -10,10 +10,19 @@
     "client": "cd frontend && npm start",
     "build": "cd frontend && npm run build"
   },
-  "keywords": ["nota-fiscal", "pdf", "gemini", "react", "node"],
+  "keywords": [
+    "nota-fiscal",
+    "pdf",
+    "gemini",
+    "react",
+    "node"
+  ],
   "author": "Marques Vinícius Melo Martins",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1"
   }
 }
