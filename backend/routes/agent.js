@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const agent01 = require('../services/agent01');
+const agent02 = require('../services/agent02'); // Alterado de agent01 para agent02
 
 /**
  * @swagger
@@ -19,6 +19,9 @@ const agent01 = require('../services/agent01');
  *                 type: string
  *                 description: A pergunta do usuário.
  *                 example: "Quais são os 5 maiores fornecedores em valor total de notas?"
+ *               history:
+ *                 type: array
+ *                 description: O histórico da conversa.
  *     responses:
  *       200:
  *         description: Resposta gerada pela IA.
@@ -43,7 +46,7 @@ router.post('/query', async (req, res) => {
     }
 
     try {
-        const answer = await agent01.answerQuery(query, history);
+        const answer = await agent02.answerQuery(query, history); // Alterado de agent01 para agent02
         res.json({ answer });
     } catch (error) {
         console.error('Erro na rota /api/agent/query:', error);
