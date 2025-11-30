@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Building2, Truck, Plus, Edit2, Trash2, 
-  Search, CheckCircle, XCircle, RefreshCw, Loader2 
+  Search, CheckCircle, XCircle, Loader2 
 } from 'lucide-react';
 import { apiService } from '../services/apiService';
 import toast from 'react-hot-toast';
@@ -22,7 +22,7 @@ const PessoasPage = () => {
     tipo: 'FORNECEDOR'
   });
 
-  const carregarPessoas = async () => {
+  const carregarPessoas = React.useCallback(async () => {
     setLoading(true);
     try {
       const result = await apiService.getPessoas({
@@ -39,7 +39,7 @@ const PessoasPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, searchTerm]);
 
   // Debounce para busca automática
   useEffect(() => {
@@ -48,7 +48,7 @@ const PessoasPage = () => {
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm, activeTab]);
+  }, [carregarPessoas]);
 
   const handleSearch = (e) => {
     e.preventDefault();

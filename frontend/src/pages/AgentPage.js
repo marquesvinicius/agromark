@@ -151,7 +151,6 @@ const AgentPage = () => {
                     </div>
                 </div>
             </main>
-            <Footer />
         </div>
     );
 };

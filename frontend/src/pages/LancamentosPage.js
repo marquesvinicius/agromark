@@ -7,7 +7,6 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, AlertCircle, Search, Filter, Calendar, X, TrendingDown, TrendingUp, Layers } from 'lucide-react';
 import LancamentosTabela from '../components/LancamentosTabela';
 import { apiService } from '../services/apiService';
-import toast from 'react-hot-toast';
 
 const LancamentosPage = () => {
   const [allMovimentos, setAllMovimentos] = useState([]);

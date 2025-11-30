@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Tags, TrendingUp, TrendingDown, Plus, Edit2, Trash2, 
-  Search, CheckCircle, XCircle, RefreshCw, Loader2 
+  Search, CheckCircle, XCircle, Loader2 
 } from 'lucide-react';
 import { apiService } from '../services/apiService';
 import toast from 'react-hot-toast';
@@ -19,7 +19,7 @@ const ClassificacoesPage = () => {
     tipo: 'DESPESA'
   });
 
-  const carregarDados = async () => {
+  const carregarDados = React.useCallback(async () => {
     setLoading(true);
     try {
       const result = await apiService.getClassificacoes({
@@ -36,7 +36,7 @@ const ClassificacoesPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, searchTerm]);
 
   // Debounce para busca automática
   useEffect(() => {
@@ -45,7 +45,7 @@ const ClassificacoesPage = () => {
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm, activeTab]);
+  }, [carregarDados]);
 
   const handleSearch = (e) => {
     e.preventDefault();
