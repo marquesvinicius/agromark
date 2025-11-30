@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Sprout } from 'lucide-react'; // Importar o ícone Sprout
-import Footer from '../components/Footer';
 import { api } from '../services/apiService'; // Importar a instância 'api' diretamente
 import MarkAvatar from '../components/MarkAvatar'; // Importar o novo componente
 
