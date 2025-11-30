@@ -60,6 +60,8 @@ router.get('/', async (req, res) => {
     // Formatar dados para o frontend
     const movimentosFormatados = movimentos.map(mov => ({
       id: mov.id,
+      tipo: mov.tipo,
+      status: mov.status,
       numeroNotaFiscal: mov.numeroNotaFiscal,
       dataEmissao: mov.dataEmissao,
       valorTotal: parseFloat(mov.valorTotal),
@@ -282,7 +284,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// DELETE - Remove um movimento e dependências
+// DELETE - Remove um movimento (Soft Delete - Inativar)
 router.delete('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
@@ -290,19 +292,42 @@ router.delete('/:id', async (req, res) => {
       return res.status(400).json({ error: 'INVALID_ID', message: 'ID inválido.' });
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.movimentoClassificacao.deleteMany({ where: { movimentoId: id } });
-      await tx.parcelaContas.deleteMany({ where: { movimentoId: id } });
-      await tx.movimentoContas.delete({ where: { id } });
+    // Soft Delete: Apenas altera o status para INATIVO
+    await prisma.movimentoContas.update({
+      where: { id },
+      data: { status: 'INATIVO' }
     });
 
-    res.status(200).json({ success: true, message: 'Movimento excluído com sucesso.' });
+    res.status(200).json({ success: true, message: 'Movimento inativado com sucesso.' });
   } catch (error) {
     console.error('❌ Erro ao excluir movimento:', error);
     if (error.code === 'P2025') {
       return res.status(404).json({ error: 'NOT_FOUND', message: 'Movimento não encontrado.' });
     }
-    res.status(500).json({ error: 'SERVER_ERROR', message: 'Erro ao excluir movimento.' });
+    res.status(500).json({ error: 'SERVER_ERROR', message: 'Erro ao inativar movimento.' });
+  }
+});
+
+// PATCH - Reativar um movimento (Soft Delete - Ativar)
+router.patch('/:id/reativar', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id || Number.isNaN(id)) {
+      return res.status(400).json({ error: 'INVALID_ID', message: 'ID inválido.' });
+    }
+
+    await prisma.movimentoContas.update({
+      where: { id },
+      data: { status: 'ATIVO' }
+    });
+
+    res.status(200).json({ success: true, message: 'Movimento reativado com sucesso.' });
+  } catch (error) {
+    console.error('❌ Erro ao reativar movimento:', error);
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'NOT_FOUND', message: 'Movimento não encontrado.' });
+    }
+    res.status(500).json({ error: 'SERVER_ERROR', message: 'Erro ao reativar movimento.' });
   }
 });
 

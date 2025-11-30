@@ -112,9 +112,10 @@ class ApiService {
   /**
    * Faz upload e processamento de PDF
    * @param {File} file - Arquivo PDF
+   * @param {string} tipoMovimento - 'DESPESA' ou 'RECEITA'
    * @param {Function} onProgress - Callback de progresso (opcional)
    */
-  async uploadPDF(file, onProgress) {
+  async uploadPDF(file, tipoMovimento = 'DESPESA', onProgress) {
     try {
       // Validações iniciais
       if (!file) {
@@ -132,8 +133,9 @@ class ApiService {
       // Preparar FormData
       const formData = new FormData();
       formData.append('pdf', file);
+      formData.append('tipo', tipoMovimento); // Envia o tipo para o backend
 
-      console.log(`Uploading: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+      console.log(`Uploading: ${file.name} (${(file.size / 1024).toFixed(1)} KB) - Tipo: ${tipoMovimento}`);
 
       // Configurar request com progress
       const config = {
@@ -238,12 +240,26 @@ class ApiService {
     }
   }
 
+  async reativarMovimento(id) {
+    try {
+      const response = await api.patch(`/movimentos/${id}/reativar`);
+      return response.data;
+    } catch (error) {
+      throw new Error(this.formatError(error));
+    }
+  }
+
   /**
    * Obtém lista de movimentos/lançamentos financeiros
    */
-  async getMovimentos() {
+  async getMovimentos(filters = {}) {
     try {
-      const response = await api.get('/movimentos');
+      // Constrói query string
+      const params = new URLSearchParams();
+      if (filters.status) params.append('status', filters.status);
+      if (filters.search) params.append('search', filters.search);
+
+      const response = await api.get(`/movimentos?${params.toString()}`);
       
       // Backend retorna { success: true, data: [...], total: N }
       const movimentos = response.data.data || [];
@@ -258,6 +274,108 @@ class ApiService {
         error: this.formatError(error),
         data: []
       };
+    }
+  }
+
+  // ===== MÉTODOS PESSOAS =====
+  async getPessoas(filters = {}) {
+    try {
+      const params = new URLSearchParams();
+      if (filters.tipo) params.append('tipo', filters.tipo);
+      if (filters.status) params.append('status', filters.status);
+      if (filters.search) params.append('search', filters.search);
+
+      const response = await api.get(`/pessoas?${params.toString()}`);
+      return { success: true, data: response.data.data };
+    } catch (error) {
+      return { success: false, error: this.formatError(error) };
+    }
+  }
+
+  async createPessoa(data) {
+    try {
+      const response = await api.post('/pessoas', data);
+      return { success: true, data: response.data.data };
+    } catch (error) {
+      return { success: false, error: this.formatError(error) };
+    }
+  }
+
+  async updatePessoa(id, data) {
+    try {
+      const response = await api.put(`/pessoas/${id}`, data);
+      return { success: true, data: response.data.data };
+    } catch (error) {
+      return { success: false, error: this.formatError(error) };
+    }
+  }
+
+  async inativarPessoa(id) {
+    try {
+      const response = await api.patch(`/pessoas/${id}/inativar`);
+      return { success: true, data: response.data.data };
+    } catch (error) {
+      return { success: false, error: this.formatError(error) };
+    }
+  }
+
+  async reativarPessoa(id) {
+    try {
+      const response = await api.patch(`/pessoas/${id}/reativar`);
+      return { success: true, data: response.data.data };
+    } catch (error) {
+      return { success: false, error: this.formatError(error) };
+    }
+  }
+
+  // ===== MÉTODOS CLASSIFICAÇÕES =====
+  async getClassificacoes(filters = {}) {
+    try {
+      const params = new URLSearchParams();
+      if (filters.tipo) params.append('tipo', filters.tipo);
+      if (filters.status) params.append('status', filters.status);
+      if (filters.search) params.append('search', filters.search);
+
+      const response = await api.get(`/classificacoes?${params.toString()}`);
+      return { success: true, data: response.data.data };
+    } catch (error) {
+      return { success: false, error: this.formatError(error) };
+    }
+  }
+
+  async createClassificacao(data) {
+    try {
+      const response = await api.post('/classificacoes', data);
+      return { success: true, data: response.data.data };
+    } catch (error) {
+      return { success: false, error: this.formatError(error) };
+    }
+  }
+
+  async updateClassificacao(id, data) {
+    try {
+      const response = await api.put(`/classificacoes/${id}`, data);
+      return { success: true, data: response.data.data };
+    } catch (error) {
+      return { success: false, error: this.formatError(error) };
+    }
+  }
+
+  async inativarClassificacao(id) {
+    try {
+      const response = await api.patch(`/classificacoes/${id}/inativar`);
+      return { success: true, data: response.data.data };
+    } catch (error) {
+      return { success: false, error: this.formatError(error) };
+    }
+  }
+
+  async reativarClassificacao(id) {
+    try {
+      const response = await api.patch(`/classificacoes/${id}/reativar`);
+      return { success: true, data: response.data.data };
+    } catch (error) {
+      return { success: false, error: this.formatError(error) };
     }
   }
 

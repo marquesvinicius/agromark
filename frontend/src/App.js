@@ -16,7 +16,9 @@ import ResultsDisplay from './components/ResultsDisplay';
 import StatusCard from './components/StatusCard';
 import Footer from './components/Footer';
 import LancamentosPage from './pages/LancamentosPage';
-import AgentPage from './pages/AgentPage'; // 1. Importar a nova página
+import AgentPage from './pages/AgentPage';
+import PessoasPage from './pages/PessoasPage';
+import ClassificacoesPage from './pages/ClassificacoesPage';
 import { apiService } from './services/apiService';
 
 // Componente da Página Inicial (Upload)
@@ -113,28 +115,6 @@ const HomePage = ({ uploadState, handleFileUpload, handleReset, apiStatus, check
                   </div>
                 </div>
 
-                {/* Categorias de Despesa */}
-                <div className="card">
-                  <h3 className="text-lg font-semibold font-display text-support mb-4 flex items-center">
-                    <CheckCircle className="w-5 h-5 text-primary-600 mr-2" />
-                    Categorias Disponíveis
-                  </h3>
-                  <div className="space-y-1 text-sm font-body">
-                    {[
-                      'Manutenção e Operação',
-                      'Infraestrutura e Utilidades',
-                      'Insumos Agrícolas',
-                      'Recursos Humanos',
-                      'Serviços Operacionais',
-                      'Outros'
-                    ].map((categoria, index) => (
-                      <div key={index} className="text-support-600">
-                        • {categoria}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
                 {/* Recursos da Plataforma */}
                 <div className="card">
                   <h3 className="text-lg font-semibold font-display text-support mb-4 flex items-center">
@@ -167,9 +147,6 @@ const HomePage = ({ uploadState, handleFileUpload, handleReset, apiStatus, check
 
         </div>
       </main>
-
-      {/* Footer */}
-      <Footer />
     </>
   );
 };
@@ -233,7 +210,7 @@ function App() {
     }
   };
 
-  const handleFileUpload = async (file) => {
+  const handleFileUpload = async (file, tipoMovimento) => {
     try {
       setUploadState({
         isUploading: true,
@@ -242,7 +219,7 @@ function App() {
         error: null
       });
 
-      const results = await apiService.uploadPDF(file);
+      const results = await apiService.uploadPDF(file, tipoMovimento);
       
       setUploadState({
         isUploading: false,
@@ -320,14 +297,15 @@ function App() {
             } 
           />
           
-          {/* Rota da Página de Movimentos */}
+          {/* Rotas do Sistema */}
           <Route path="/movimentos" element={<LancamentosPage />} />
-
-          {/* 2. Rota da Página do Agente */}
           <Route path="/agent" element={<AgentPage />} />
-
-          {/* A rota /about-mark foi removida */}
+          <Route path="/pessoas" element={<PessoasPage />} />
+          <Route path="/classificacoes" element={<ClassificacoesPage />} />
         </Routes>
+
+        {/* Footer Global */}
+        <Footer />
       </div>
     </Router>
   );

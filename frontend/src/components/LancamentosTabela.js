@@ -4,8 +4,9 @@
  */
 
 import React from 'react';
-import { FileText, Calendar, DollarSign, Users, Trash2 } from 'lucide-react';
+import { FileText, Calendar, DollarSign, Users, Trash2, CheckCircle } from 'lucide-react';
 import { apiService } from '../services/apiService';
+import toast from 'react-hot-toast';
 
 const LancamentosTabela = ({ movimentos, onDeleted }) => {
   /**
@@ -57,6 +58,28 @@ const LancamentosTabela = ({ movimentos, onDeleted }) => {
     );
   }
 
+  const handleAction = async (movimento) => {
+    const isInactive = movimento.status === 'INATIVO';
+    const actionName = isInactive ? 'reativar' : 'inativar';
+    
+    if (!window.confirm(`Deseja ${actionName} este movimento?`)) return;
+
+    try {
+      if (isInactive) {
+        await apiService.reativarMovimento(movimento.id);
+        toast.success('Movimento reativado com sucesso!');
+      } else {
+        await apiService.deletarMovimento(movimento.id);
+        toast.success('Movimento inativado com sucesso!');
+      }
+      
+      if (onDeleted) onDeleted();
+    } catch (e) {
+      console.error(`Erro ao ${actionName} movimento:`, e);
+      toast.error(e.message || `Erro ao ${actionName} movimento`);
+    }
+  };
+
   return (
     <div className="card overflow-hidden">
       <div className="overflow-x-auto">
@@ -99,46 +122,46 @@ const LancamentosTabela = ({ movimentos, onDeleted }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-secondary-200">
-            {movimentos.map((movimento) => (
-              <tr 
-                key={movimento.id} 
-                className="hover:bg-secondary-50 transition-colors"
-              >
-                <td className="px-4 py-3 text-sm font-medium text-support">
-                  {movimento.numeroNotaFiscal || '-'}
-                </td>
-                <td className="px-4 py-3 text-sm text-support-600">
-                  {formatarData(movimento.dataEmissao)}
-                </td>
-                <td className="px-4 py-3 text-sm text-support-600">
-                  {movimento.fornecedor?.razaoSocial || '-'}
-                </td>
-                <td className="px-4 py-3 text-sm text-support-600">
-                  {movimento.faturado?.razaoSocial || '-'}
-                </td>
-                <td className="px-4 py-3 text-sm font-semibold text-primary-600 text-right">
-                  {formatarMoeda(movimento.valorTotal)}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={async () => {
-                      if (!window.confirm('Deseja excluir este movimento?')) return;
-                      try {
-                        await apiService.deletarMovimento(movimento.id);
-                        if (onDeleted) onDeleted();
-                      } catch (e) {
-                        console.error('Erro ao excluir movimento:', e);
-                        alert(e.message || 'Erro ao excluir movimento');
-                      }
-                    }}
-                    className="inline-flex items-center px-2 py-1 rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-300"
-                    title="Excluir movimento"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {movimentos.map((movimento) => {
+              const isInactive = movimento.status === 'INATIVO';
+              return (
+                <tr 
+                  key={movimento.id} 
+                  className={`hover:bg-secondary-50 transition-colors ${
+                    isInactive ? 'opacity-50 bg-gray-50 grayscale' : ''
+                  }`}
+                >
+                  <td className="px-4 py-3 text-sm font-medium text-support">
+                    {movimento.numeroNotaFiscal || '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-support-600">
+                    {formatarData(movimento.dataEmissao)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-support-600">
+                    {movimento.fornecedor?.razaoSocial || '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-support-600">
+                    {movimento.faturado?.razaoSocial || '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm font-semibold text-primary-600 text-right">
+                    {formatarMoeda(movimento.valorTotal)}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => handleAction(movimento)}
+                      className={`inline-flex items-center p-2 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
+                        isInactive 
+                          ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' 
+                          : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+                      }`}
+                      title={isInactive ? "Reativar movimento" : "Inativar movimento"}
+                    >
+                      {isInactive ? <CheckCircle className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -164,5 +187,3 @@ const LancamentosTabela = ({ movimentos, onDeleted }) => {
 };
 
 export default LancamentosTabela;
-
-

@@ -98,9 +98,11 @@ router.post('/', upload.single('pdf'), async (req, res) => {
 
     console.log(`📝 Texto extraído: ${pdfData.text.length} caracteres`);
 
-    // Processar com Gemini API
-    console.log('🤖 Enviando para Gemini API...');
-    const extractedData = await agent01.extractInvoiceData(pdfData.text);
+    // Obter tipo de movimento do corpo da requisição
+    const tipoMovimento = req.body.tipo || 'DESPESA'; // Padrão DESPESA
+    console.log(`🤖 Enviando para Gemini API (Tipo: ${tipoMovimento})...`);
+
+    const extractedData = await agent01.extractInvoiceData(pdfData.text, tipoMovimento);
 
     // Enriquecer dados com informações do arquivo
     const result = {

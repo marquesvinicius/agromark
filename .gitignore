@@ -123,3 +123,17 @@ build/
 *.md
 !README.md
 !API_DOCUMENTATION.md
+
+# Arquivos de vídeo e demonstração
+/VIDEO - Demonstracao Agromark N2.mp4
+
+# Imagens na raiz (já existem no frontend)
+/logo-final.png
+
+# Arquivos de configuração de deploy na raiz
+/render.yaml
+/vercel.json
+
+# Arquivos de pacote na raiz (cada projeto tem o seu)
+/package.json
+/package-lock.json

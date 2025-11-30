@@ -104,11 +104,12 @@ class Agent01 {
   /**
    * Extrai dados estruturados de uma Nota Fiscal
    * @param {string} pdfText - Texto extraído do PDF
+   * @param {string} tipoMovimento - 'DESPESA' ou 'RECEITA'
    * @returns {Object} Dados estruturados da nota fiscal
    */
-  async extractInvoiceData(pdfText) {
+  async extractInvoiceData(pdfText, tipoMovimento = 'DESPESA') {
     try {
-      const prompt = this.buildExtractionPrompt(pdfText);
+      const prompt = this.buildExtractionPrompt(pdfText, tipoMovimento);
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
       
@@ -121,7 +122,7 @@ class Agent01 {
         const extractedData = JSON.parse(responseText);
         
         // Validar e enriquecer dados, aplicando fallbacks se necessário
-        const validatedData = this.validateAndEnrichData(extractedData, pdfText);
+        const validatedData = this.validateAndEnrichData(extractedData, pdfText, tipoMovimento);
         
         return validatedData;
         
@@ -139,57 +140,40 @@ class Agent01 {
   /**
    * Constrói prompt otimizado para extração de dados
    */
-  buildExtractionPrompt(pdfText) {
+  buildExtractionPrompt(pdfText, tipoMovimento) {
+    const isReceita = tipoMovimento === 'RECEITA';
+    
+    // Instruções específicas baseadas no tipo
+    const roleInstructions = isReceita
+      ? `VOCÊ ESTÁ PROCESSANDO UMA NOTA DE RECEITA (VENDA).
+         1. O EMITENTE é o "FATURADO" (nossa empresa que vendeu). Ele está no cabeçalho.
+         2. O DESTINATÁRIO é o "FORNECEDOR/CLIENTE" (quem comprou). Ele está no campo de destinatário.`
+      : `VOCÊ ESTÁ PROCESSANDO UMA NOTA DE DESPESA (COMPRA).
+         1. O EMITENTE é o "FORNECEDOR" (quem vendeu). Ele está no cabeçalho.
+         2. O DESTINATÁRIO é o "FATURADO" (nossa empresa que comprou). Ele está no campo de destinatário.`;
+
     const prompt = `
 Você é um especialista em análise de documentos fiscais. Analise o texto da Nota Fiscal abaixo e extraia APENAS as informações solicitadas, retornando um JSON válido.
+
+${roleInstructions}
 
 TEXTO DA NOTA FISCAL:
 ${pdfText}
 
 INSTRUÇÕES OBRIGATÓRIAS:
-1. O CNPJ do Fornecedor (Emitente) é OBRIGATÓRIO. Ele fica SEMPRE no cabeçalho/topo do documento, associado à empresa que EMITIU a nota. NÃO CONFUNDA com o CNPJ do Destinatário/Faturado. O CNPJ do Fornecedor é o que está mais acima no documento. Exemplo: "08.172.731/0001-26". Extraia apenas os números.
-2. O Faturado (comprador/Destinatário) DEVE ter um CPF (11 dígitos) OU um CNPJ (14 dígitos). Extraia um dos dois. É um campo obrigatório. Procure na seção de destinatário.
-3. Extraia apenas informações que estão claramente presentes no texto.
-4. Para valores monetários, use apenas números (sem símbolos), com ponto como separador decimal.
-5. Para datas, use formato YYYY-MM-DD.
-6. Para CNPJ/CPF, retorne APENAS os números, sem formatação.
+1. Extraia apenas informações que estão claramente presentes no texto.
+2. Para valores monetários, use apenas números (sem símbolos), com ponto como separador decimal.
+3. Para datas, use formato YYYY-MM-DD.
+4. Para CNPJ/CPF, retorne APENAS os números, sem formatação.
 
 INSTRUÇÕES DETALHADAS PARA EXTRAÇÃO DE PRODUTOS:
+A extração de produtos é a tarefa mais difícil. Para cada item na seção 'DADOS DOS PRODUTOS/SERVIÇOS', isole a linha e busque o trio numérico: Quantidade * Valor Unitário = Valor Total. Teste as multiplicações.
 
-A extração de produtos é a tarefa mais difícil. Para cada item na seção 'DADOS DOS PRODUTOS/SERVIÇOS', você deve agir como um detetive. Sua missão é encontrar 3 números específicos em uma linha de texto confusa.
+INSTRUÇÕES PARA CLASSIFICAÇÃO:
+- Classifique a ${isReceita ? 'RECEITA' : 'DESPESA'} baseada no conteúdo dos produtos/serviços.
 
-**SEU PROCESSO MENTAL PARA CADA ITEM:**
-
-1.  **'Qual é a linha do crime?'**: Isole a linha de texto completa do produto.
-    *   *Exemplo*: '"60138651 TUBO RED. O25,0X 6,0- 50 NL G. 84329000 020 5949 PC 2 48,86 97,72 28,80 5,47 0,00 19,00 0,00"'
-
-2.  **'Liste todos os suspeitos'**: Liste todos os números decimais e inteiros na linha, ignorando códigos longos como NCM (ex: 84329000) ou CST (ex: 020).
-
-3.  **'Teste as combinações'**: Teste combinações de 3 números da lista até encontrar um trio onde um inteiro pequeno (A) * um decimal (B) = outro decimal (C). Teste sistematicamente para não perder nenhum.
-    *   *Raciocínio para o exemplo*: "Números: 2, 48.86, 97.72, 28.80, 5.47, 19.00, 0.00. Teste 1: 2 * 48.86 = 97.72 (sim!). Ignoro os outros porque não formam um trio similar."
-
-4.  **'Quem fez o quê?'**: Identifique o papel de cada número no trio.
-    *   'quantidade': É o inteiro pequeno (A, ex: '2').
-    *   'valorUnitario': É o multiplicador decimal (B, ex: '48.86').
-    *   'valorTotal': É o resultado (C, ex: '97.72').
-
-**EXEMPLOS REAIS DE EXTRAÇÃO CORRETA:**
-- Linha: "60138665 KIT CABO ACO E FIXACOES 73269090 000 5949 PC 2 376,33 752,66 752,66 143,01 0,00 19,00 0,00"
-  - Trio: 2 * 376.33 = 752.66
-  - Extração: quantidade=2, valorUnitario=376.33, valorTotal=752.66
-- Linha: "60143720 PS 12 X 80 DIN 931 10.9 ZLUZ 73181500 020 5949 PC 2 493,40 986,80 571,31 108,55 0,00 19,00 0,00"
-  - Trio: 2 * 493.40 = 986.80
-  - Extração: quantidade=2, valorUnitario=493.40, valorTotal=986.80
-
-**NÃO SEJA ENGANADO!** A IA às vezes assume que a quantidade é '1' e repete o valor total. ISSO ESTÁ ERRADO. Você **DEVE** encontrar o trio que se multiplica corretamente. Se você não encontrar um trio que funcione, a extração falhou para aquele item, mas você deve tentar para todos os itens.
-
-Aplique este processo mental para CADA item da nota.
-
-INSTRUÇÕES PARA CLASSIFICAÇÃO DE DESPESA:
-- Classifique a despesa baseada no conteúdo dos produtos/serviços.
-
-CATEGORIAS DE DESPESA DISPONÍVEIS:
-${config.despesaCategorias.map(cat => `- ${cat}`).join('\n')}
+CATEGORIAS DE ${isReceita ? 'RECEITA' : 'DESPESA'} DISPONÍVEIS:
+${(isReceita ? config.receitaCategorias || ['Venda de Soja', 'Venda de Milho', 'Prestação de Serviço'] : config.despesaCategorias).map(cat => `- ${cat}`).join('\n')}
 
 RETORNE APENAS O JSON NO FORMATO EXATO:
 {
@@ -216,17 +200,17 @@ RETORNE APENAS O JSON NO FORMATO EXATO:
     {
       "descricao": "string",
       "quantidade": "number ou null",
-      "valorUnitario": "number (corrigido, ex: 1234.56) ou null",
-      "valorTotal": "number (corrigido, ex: 1234.56) ou null"
+      "valorUnitario": "number (corrigido) ou null",
+      "valorTotal": "number (corrigido) ou null"
     }
   ],
   "financeiro": {
-    "valorTotal": "number (corrigido, ex: 1234.56) ou null",
+    "valorTotal": "number (corrigido) ou null",
     "parcelas": [
       {
         "numero": 1,
         "dataVencimento": "YYYY-MM-DD ou null",
-        "valor": "number (corrigido, ex: 1234.56) ou null"
+        "valor": "number (corrigido) ou null"
       }
     ]
   },
@@ -263,25 +247,24 @@ RETORNE APENAS O JSON NO FORMATO EXATO:
   /**
    * Valida e enriquece dados extraídos
    */
-  validateAndEnrichData(data, pdfText) {
+  validateAndEnrichData(data, pdfText, tipoMovimento) {
     const valorTotalFinanceiro = this.parseNumber(data.financeiro?.valorTotal);
     let parcelasValidadas = this.validateParcelas(data.financeiro?.parcelas);
 
     // GARANTE QUE SEMPRE HAJA AO MENOS 1 PARCELA
-    // Se o LLM não encontrar parcelas, cria uma com o valor total.
     if (parcelasValidadas.length === 0 && valorTotalFinanceiro) {
       parcelasValidadas.push({
         numero: 1,
-        dataVencimento: null, // O LLM não encontrou, então mantemos nulo
+        dataVencimento: null,
         valor: valorTotalFinanceiro
       });
-    }
-    // Se o LLM encontrar 1 parcela mas sem valor, preenche com o valor total.
-    else if (parcelasValidadas.length === 1 && !parcelasValidadas[0].valor && valorTotalFinanceiro) {
+    } else if (parcelasValidadas.length === 1 && !parcelasValidadas[0].valor && valorTotalFinanceiro) {
       parcelasValidadas[0].valor = valorTotalFinanceiro;
     }
 
     const validated = {
+      // Nota: O Frontend espera a estrutura 'fornecedor' e 'faturado'.
+      // Se for RECEITA, o LLM já inverteu quem é quem no JSON, então mantemos a estrutura.
       fornecedor: {
         razaoSocial: data.fornecedor?.razaoSocial || null,
         nomeFantasia: data.fornecedor?.nomeFantasia || null,
@@ -313,51 +296,30 @@ RETORNE APENAS O JSON NO FORMATO EXATO:
       processamento: {
         timestamp: new Date().toISOString(),
         versao: '1.0.0',
-        status: 'success'
+        status: 'success',
+        tipo: tipoMovimento
       }
     };
 
-    // --- FALLBACK COM REGEX PARA CAMPOS OBRIGATÓRIOS ---
-
-    // 1. Forçar CNPJ do Fornecedor
+    // --- FALLBACK COM REGEX ---
+    // A lógica de fallback precisa ser cuidadosa. Se for Receita, o Fornecedor (Cliente) é o Destinatário no texto.
+    
+    // Se o CNPJ do "fornecedor" (contraparte) estiver vazio:
     if (!validated.fornecedor.cnpj) {
-      console.warn('⚠️ LLM não extraiu CNPJ do fornecedor. Ativando fallback com Regex posicional...');
       const cnpjsEncontrados = this._findCnpjsInTextWithPosition(pdfText);
-      
       if (cnpjsEncontrados.length > 0) {
-        // Ordena pela posição no texto (menor índice primeiro) e pega o primeiro.
-        // A suposição é que o CNPJ do fornecedor aparece primeiro no texto do PDF.
         cnpjsEncontrados.sort((a, b) => a.index - b.index);
-        validated.fornecedor.cnpj = cnpjsEncontrados[0].cnpj;
-        console.log(`✅ Fallback bem-sucedido. CNPJ do fornecedor encontrado pela posição: ${validated.fornecedor.cnpj}`);
-      } else {
-        console.error('❌ Fallback falhou. Nenhum CNPJ encontrado no texto.');
-      }
-    }
-
-    // 2. Forçar CPF ou CNPJ do Faturado
-    if (!validated.faturado.cpf && !validated.faturado.cnpj) {
-      console.warn('⚠️ LLM não extraiu CPF/CNPJ do faturado. Ativando fallback com Regex...');
-      const cpfsEncontrados = this._findCpfsInTextWithPosition(pdfText);
-
-      if (cpfsEncontrados.length > 0) {
-        // Assume o primeiro CPF encontrado é do faturado
-        cpfsEncontrados.sort((a, b) => a.index - b.index);
-        validated.faturado.cpf = cpfsEncontrados[0].cpf;
-        console.log(`✅ Fallback bem-sucedido. CPF do faturado encontrado: ${validated.faturado.cpf}`);
-      } else {
-        const cnpjsEncontrados = this._findCnpjsInTextWithPosition(pdfText);
-        // Pega um CNPJ que seja diferente do CNPJ do fornecedor
-        const cnpjFaturado = cnpjsEncontrados.map(c => c.cnpj).find(cnpj => cnpj !== validated.fornecedor.cnpj);
-        if (cnpjFaturado) {
-          validated.faturado.cnpj = cnpjFaturado;
-          console.log(`✅ Fallback bem-sucedido. CNPJ do faturado encontrado: ${validated.faturado.cnpj}`);
+        // Se for DESPESA, o fornecedor é o primeiro (emitente).
+        // Se for RECEITA, o fornecedor (cliente) é o segundo ou o destinatário.
+        if (tipoMovimento === 'DESPESA') {
+             validated.fornecedor.cnpj = cnpjsEncontrados[0].cnpj;
         } else {
-           console.error('❌ Fallback falhou. Nenhum CPF ou CNPJ de faturado encontrado no texto.');
+            // Tenta pegar o segundo CNPJ se houver, senão pega o primeiro diferente do faturado
+            if (cnpjsEncontrados.length > 1) validated.fornecedor.cnpj = cnpjsEncontrados[1].cnpj;
+            else validated.fornecedor.cnpj = cnpjsEncontrados[0].cnpj;
         }
       }
     }
-
 
     return validated;
   }
@@ -378,7 +340,7 @@ RETORNE APENAS O JSON NO FORMATO EXATO:
   }
 
   /**
-   * Utilitários de busca com Regex para fallback, retornando valores com suas posições.
+   * Utilitários de busca com Regex para fallback
    */
   _findCnpjsInTextWithPosition(text) {
     const regex = /\b(?:\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}|\d{14})\b/g;
@@ -392,7 +354,6 @@ RETORNE APENAS O JSON NO FORMATO EXATO:
       });
     }
     
-    // Remove duplicados baseados no CNPJ limpo, mantendo a primeira ocorrência
     const uniqueCnpjs = [];
     const seen = new Set();
     for (const m of matches) {
@@ -402,29 +363,6 @@ RETORNE APENAS O JSON NO FORMATO EXATO:
       }
     }
     return uniqueCnpjs;
-  }
-
-  _findCpfsInTextWithPosition(text) {
-    const regex = /\b(?:\d{3}\.\d{3}\.\d{3}-\d{2}|\d{11})\b/g;
-    const matches = [];
-    let match;
-    while ((match = regex.exec(text)) !== null) {
-      matches.push({
-        raw: match[0],
-        cpf: match[0].replace(/\D/g, ''),
-        index: match.index
-      });
-    }
-    
-    const uniqueCpfs = [];
-    const seen = new Set();
-    for (const m of matches) {
-      if (!seen.has(m.cpf) && m.cpf.length === 11) {
-        seen.add(m.cpf);
-        uniqueCpfs.push(m);
-      }
-    }
-    return uniqueCpfs;
   }
 
   validateDate(dateStr) {
@@ -441,8 +379,8 @@ RETORNE APENAS O JSON NO FORMATO EXATO:
 
   validateCategoria(categoria) {
     if (!categoria) return 'OUTROS';
-    const upper = categoria.toUpperCase();
-    return config.despesaCategorias.includes(upper) ? upper : 'OUTROS';
+    // Aceita qualquer string não vazia, pois agora temos categorias dinâmicas
+    return categoria.toUpperCase();
   }
 
   validateProdutos(produtos) {
