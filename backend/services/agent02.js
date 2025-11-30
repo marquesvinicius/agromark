@@ -277,11 +277,19 @@ class Agent02 {
       - Classificacao -> \`classificacao\`
       - MovimentoClassificacao -> \`movimento_classificacao\`
 
+      **DICAS DE NEGÓCIO (Tradução de Termos):**
+      - "Gastos", "Despesas", "Pagamentos", "Saídas" -> \`movimento_contas.tipo = 'APAGAR'\`
+      - "Receitas", "Vendas", "Entradas", "Ganhos" -> \`movimento_contas.tipo = 'ARECEBER'\`
+      - "Fornecedor" -> \`pessoa.tipo = 'FORNECEDOR'\`
+      - "Cliente" -> \`pessoa.tipo = 'CLIENTE'\`
+      - "Vencidas" -> \`parcela_contas."dataVencimento" < NOW() AND parcela_contas."statusParcela" = 'ABERTA'\`
+
       **Outras Regras:**
       1. Gere APENAS a consulta SQL, sem explicações ou markdown.
       2. Coloque nomes de colunas camelCase entre aspas duplas (ex: "valorTotal", "movimentoId").
       3. Para status, use os valores do Enum. Para 'parcelas em aberto', a condição é \`WHERE "statusParcela" = 'ABERTA'\`.
-      4. Se não puder responder, retorne "NÃO CONSIGO RESPONDER".
+      4. Para buscas de texto (nomes), use sempre \`ILIKE\` para ignorar maiúsculas/minúsculas (ex: \`razaoSocial ILIKE '%termo%'\`).
+      5. Se não puder responder, retorne "NÃO CONSIGO RESPONDER".
 
       **EXEMPLO 1 (Simples):**
       - **Pergunta:** "Quantos fornecedores existem?"
@@ -289,7 +297,7 @@ class Agent02 {
 
       **EXEMPLO 2 (Complexo com JOIN e Soma):**
       - **Pergunta:** "Quanto já gastamos com insumos agrícolas?"
-      - **SQL Gerado:** SELECT SUM(mc."valorTotal") FROM movimento_contas AS mc JOIN movimento_classificacao AS mcl ON mc.id = mcl."movimentoId" JOIN classificacao AS c ON mcl."classificacaoId" = c.id WHERE c.descricao = 'INSUMOS AGRÍCOLAS';
+      - **SQL Gerado:** SELECT SUM(mc."valorTotal") FROM movimento_contas AS mc JOIN movimento_classificacao AS mcl ON mc.id = mcl."movimentoId" JOIN classificacao AS c ON mcl."classificacaoId" = c.id WHERE c.descricao ILIKE '%INSUMOS AGRÍCOLAS%' AND mc.tipo = 'APAGAR';
 
       **Pergunta do Usuário:**
       "${userQuery}"
